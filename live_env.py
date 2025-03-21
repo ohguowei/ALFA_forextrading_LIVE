@@ -95,10 +95,8 @@ class LiveOandaForexEnv:
         print(f"No existing position found for {self.instrument} in OANDA.")
 
 
+    # live_env.py
     def _fetch_initial_data(self):
-        """
-        Fetch initial historical data from OANDA API with error handling.
-        """
         try:
             data = np.array(fetch_candle_data(
                 self.instrument, 
@@ -113,54 +111,39 @@ class LiveOandaForexEnv:
         except Exception as e:
             print(f"Error fetching initial data: {e}")
             raise
-
-
+    
     def reset(self):
         self.current_index = 16
         self.position_open = False
         self.position_side = None
         self.entry_price = None
         self.trade_log = []
-    
+        
         self.data = self._fetch_initial_data()
-        self.features = compute_features(self.data)  # shape (..., 12)
-    
-        # same as in step: slice out the last 16 timesteps
+        self.features = compute_features(self.data)  # Updated call.
+        
         initial_features = self.features[self.current_index - 16 : self.current_index]
-    
-        # no open position -> P/L = 0
         current_pl = 0.0
         pl_column = np.full((initial_features.shape[0], 1), current_pl)
-        # horizontally stack to get (16, 13)
         initial_state = np.hstack((initial_features, pl_column))
-    
         return initial_state
-
-
+    
     def update_live_data(self):
-        """
-        Fetches the most recent candle from OANDA and appends it to the data.
-        Handles API errors gracefully.
-        """
         try:            
-            new_candle = fetch_candle_data(self.instrument, 
-                                           self.granularity, 
-                                           candle_count=1, 
-                                           access_token=self.access_token, 
-                                           environment=self.environment)[0]
+            new_candle = fetch_candle_data(
+                self.instrument, 
+                self.granularity, 
+                candle_count=1, 
+                access_token=self.access_token, 
+                environment=self.environment
+            )[0]
             
-            # Ensure the candle has all required fields
-            if len(new_candle) != 5:  # [open, high, low, close, volume]
+            if len(new_candle) != 6:
                 raise ValueError("Invalid candle data returned from OANDA API.")
             
-            # Append the new candle to the data
             self.data = np.vstack((self.data, new_candle))
-            
-            # Recompute features for the new candle (including the 13th feature)
-            new_features = compute_features(np.vstack((self.data[-2:],)))  # Ensure this returns (1, 13)
+            new_features = compute_features(np.vstack((self.data[-2:],)))
             self.features = np.vstack((self.features, new_features))
-            
-            # Increment the current index
             self.current_index += 1
         except Exception as e:
             print(f"Error updating live data: {e}")

@@ -7,6 +7,8 @@ import oandapyV20.endpoints.positions as positions
 def get_client(access_token, environment):
     return API(access_token=access_token, environment=environment)
 
+# oanda_api.py
+
 def fetch_candle_data(instrument, granularity="H1", candle_count=500, access_token=None, environment=None):
     if not access_token or not environment:
         raise ValueError("Access token and environment must be provided")
@@ -14,7 +16,7 @@ def fetch_candle_data(instrument, granularity="H1", candle_count=500, access_tok
     params = {
         "granularity": granularity,
         "count": candle_count,
-        "price": "M"
+        "price": "BA"  # Request Bid and Ask prices.
     }
     r = instruments.InstrumentsCandles(instrument, params=params)
     response = client.request(r)
@@ -23,17 +25,33 @@ def fetch_candle_data(instrument, granularity="H1", candle_count=500, access_tok
     candles = response["candles"]
     data = []
     for candle in candles:
-        if "mid" not in candle or "volume" not in candle:
+        if "bid" not in candle or "ask" not in candle or "volume" not in candle:
             print(f"Skipping invalid candle: {candle}")
             continue
-        mid = candle["mid"]
         try:
-            o = float(mid["o"])
-            h = float(mid["h"])
-            l = float(mid["l"])
-            c = float(mid["c"])
+            bid = candle["bid"]
+            ask = candle["ask"]
+            # Compute mid prices from bid and ask values.
+            o_bid = float(bid["o"])
+            o_ask = float(ask["o"])
+            h_bid = float(bid["h"])
+            h_ask = float(ask["h"])
+            l_bid = float(bid["l"])
+            l_ask = float(ask["l"])
+            c_bid = float(bid["c"])
+            c_ask = float(ask["c"])
+            
+            o = (o_bid + o_ask) / 2
+            h = (h_bid + h_ask) / 2
+            l = (l_bid + l_ask) / 2
+            c = (c_bid + c_ask) / 2
+            
+            # Calculate the actual spread using the close prices.
+            spread = c_ask - c_bid
+            
             v = int(candle["volume"])
-            data.append([o, h, l, c, v])
+            # Return six values per candle: [open, high, low, close, volume, spread]
+            data.append([o, h, l, c, v, spread])
         except (KeyError, ValueError) as e:
             print(f"Skipping invalid candle due to error: {e}")
             continue

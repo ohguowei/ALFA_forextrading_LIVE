@@ -16,16 +16,17 @@ class Trade:
         self.timestamp = timestamp
 
     def __repr__(self):
-        return f"Trade(side={self.side}, entry={self.entry_price}, exit={self.exit_price}, profit={self.profit:.4f})"
+        return (f"Trade(side={self.side}, entry={self.entry_price}, "
+                f"exit={self.exit_price}, profit={self.profit:.4f})")
 
 class SimulatedOandaForexEnv:
     def __init__(self, currency_config, candle_count=TradingConfig.CANDLE_COUNT, granularity=TradingConfig.GRANULARITY):
         self.currency_config = currency_config
         self.instrument = currency_config.instrument
         self.units = currency_config.simulated_units
-        self.spread = currency_config.spread
+        # With the new approach, the actual spread is computed from candle data.
+        # Thus, we no longer use a fixed spread from the config.
         
-        # NEW: store credentials from the currency configuration
         self.account_id = currency_config.account_id
         self.access_token = currency_config.access_token
         self.environment = currency_config.environment
@@ -33,9 +34,9 @@ class SimulatedOandaForexEnv:
         self.granularity = granularity
         self.candle_count = candle_count
 
-        # Fetch initial historical data
-        self.data = self._fetch_initial_data()
-        self.features = compute_features(self.data)
+        # Fetch initial historical data and compute features.
+        self.data = self._fetch_initial_data()  # Expecting each candle to have 6 values: [o, h, l, c, volume, spread]
+        self.features = compute_features(self.data)  # Returns a (n, 6) array
         self.current_index = 16
 
         self.position_open = False
@@ -43,59 +44,52 @@ class SimulatedOandaForexEnv:
         self.entry_price = None
         self.trade_log = []
 
-
     def _fetch_initial_data(self):
-        """
-        Fetch initial historical data from OANDA API with error handling.
-        """
-        try:
-            data = np.array(fetch_candle_data(
-                self.instrument, 
-                self.granularity, 
-                self.candle_count, 
-                access_token=self.access_token, 
-                environment=self.environment
-            ))
-            if len(data) == 0:
-                raise ValueError("No data returned from OANDA API.")
-            return data
-        except Exception as e:
-            print(f"Error fetching initial data: {e}")
-            raise
-
+        attempts = 0
+        max_attempts = 5
+        while attempts < max_attempts:
+            try:
+                data = np.array(fetch_candle_data(
+                    self.instrument, 
+                    self.granularity, 
+                    self.candle_count, 
+                    access_token=self.access_token, 
+                    environment=self.environment
+                ))
+                if len(data) == 0:
+                    raise ValueError("No data returned from OANDA API.")
+                print(f"Successfully fetched {len(data)} candles for {self.instrument}.")
+                return data
+            except Exception as e:
+                attempts += 1
+                print(f"Attempt {attempts} - Error fetching initial data: {e}")
+                time.sleep(30)
+        print("Max attempts reached. Using fallback data.")
+        # Fallback candle includes a spread value (defaulting to 0)
+        fallback_candle = [1.0, 1.0, 1.0, 1.0, 0, 0]
+        fallback_data = np.array([fallback_candle] * self.candle_count)
+        return fallback_data
 
     def reset(self):
         """
         Reset the environment to its initial state.
-        Returns a (16, 13) array: 16 timesteps × (12 base features + 1 P/L).
+        Returns a state with shape (16, 7):
+          - 6 features from compute_features (x1–x6)
+          - 1 additional column for P/L (set to 0)
         """
-        # Reset index and trade state
         self.current_index = 16
         self.position_open = False
         self.position_side = None
         self.entry_price = None
         self.trade_log = []
 
-        # Re-fetch or reuse the features if you wish, but typically once is enough
-        # self.data = self._fetch_initial_data()
-        # self.features = compute_features(self.data)
-
-        # Get the last 16 rows of your 12-dim features
-        base_features = self.features[self.current_index - 16 : self.current_index]
-        # At reset, we have no open trade -> P/L = 0.0
+        base_features = self.features[self.current_index - 16 : self.current_index]  # Shape: (16, 6)
         current_pl = 0.0
-        pl_column = np.full((base_features.shape[0], 1), current_pl)
-        # Now shape is (16, 13)
-        state_with_pl = np.hstack((base_features, pl_column))
-
+        pl_column = np.full((base_features.shape[0], 1), current_pl)  # Shape: (16, 1)
+        state_with_pl = np.hstack((base_features, pl_column))  # Final shape: (16, 7)
         return state_with_pl
-    
 
     def update_live_data(self):
-        """
-        Fetch the most recent candle from OANDA and append it to the data.
-        Handles API errors gracefully.
-        """
         try:
             new_candle = fetch_candle_data(
                 self.instrument, 
@@ -104,70 +98,49 @@ class SimulatedOandaForexEnv:
                 access_token=self.access_token, 
                 environment=self.environment
             )[0]
-            
-            # Ensure the candle has all required fields (expected: [open, high, low, close, volume])
-            if len(new_candle) != 5:
+            if len(new_candle) != 6:  # Expecting [o, h, l, c, volume, spread]
                 raise ValueError("Invalid candle data returned from OANDA API.")
-            
-            # Append the new candle to the existing data
             self.data = np.vstack((self.data, new_candle))
-            
-            # Recompute features for the new candle (ensure the result shape is (1, 13) if expected)
             new_features = compute_features(np.vstack((self.data[-2:],)))
             self.features = np.vstack((self.features, new_features))
-            
-            # Increment the current index to reflect the new data point
             self.current_index += 1
         except Exception as e:
             print(f"Error updating live data: {e}")
 
-
     def compute_reward(self, action):
         """
-        Compute the reward based on the action and the latest price change in the features.
-        This was your original logic: the first feature (index 0) is the % change in close.
+        Compute reward based on a simple model using the change in close price.
         """
-        z_t = self.features[self.current_index - 1, 0]  # percentage change
-        if action == 0:      # long
+        # Using the first feature (percentage change in close price) as the basis.
+        z_t = self.features[self.current_index - 1, 0]
+        if action == 0:  # long
             delta = 1
-        elif action == 1:    # short
+        elif action == 1:  # short
             delta = -1
-        else:                # neutral
+        else:
             delta = 0
         return delta * z_t
 
-    def _apply_spread(self, price, side):
-        """
-        Apply the spread to the price based on the trade side.
-        """
-        if side == "long":
-            return price + (self.spread / 2)
-        elif side == "short":
-            return price - (self.spread / 2)
-        return price
-
     def simulated_open_position(self, side):
         """
-        Simulate opening a position with spread applied.
+        Simulate opening a position.
         """
         if not self.position_open:
             self.position_open = True
             self.position_side = side
-            # Mark the entry price after spread
-            self.entry_price = self._apply_spread(self.data[self.current_index][3], side)
+            # Use the current candle's close price as the entry price.
+            self.entry_price = self.data[self.current_index][3]
 
     def simulated_close_position(self):
         """
-        Simulate closing a position with spread applied.
+        Simulate closing a position.
         """
         if self.position_open:
-            exit_price = self._apply_spread(self.data[self.current_index][3], self.position_side)
+            exit_price = self.data[self.current_index][3]
             if self.position_side == "long":
                 profit = (exit_price - self.entry_price) / self.entry_price
-            else:  # short
+            else:
                 profit = (self.entry_price - exit_price) / self.entry_price
-
-            # Log the trade
             trade = Trade(
                 side=self.position_side,
                 entry_price=self.entry_price,
@@ -176,8 +149,6 @@ class SimulatedOandaForexEnv:
                 timestamp=time.time()
             )
             self.trade_log.append(trade)
-
-            # Reset position state
             self.position_open = False
             self.position_side = None
             self.entry_price = None
@@ -186,13 +157,11 @@ class SimulatedOandaForexEnv:
         """
         Execute one step in the simulated trading environment.
         Returns:
-          next_state: (16, 13) array (unless done is True),
-                      with the P/L as the 13th feature.
-          reward: float
-          done: bool
+          next_state: (16, 7) array,
+          reward: float,
+          done: bool,
           info: dict
         """
-        # 1) Execute the trade action
         if action == 0:  # long
             if not self.position_open or self.position_side != "long":
                 if self.position_open:
@@ -203,39 +172,27 @@ class SimulatedOandaForexEnv:
                 if self.position_open:
                     self.simulated_close_position()
                 self.simulated_open_position("short")
-        elif action == 2:  # neutral
+        elif action == 2:  # neutral (close any open position)
             if self.position_open:
                 self.simulated_close_position()
 
-        # 2) Compute reward
         reward = self.compute_reward(action)
-
-        # 3) Move to the next time step
         self.current_index += 1
 
-        # 4) Check if we are out of data
         done = (self.current_index >= len(self.features))
         if done:
             return None, reward, done, {}
 
-        # 5) Build the next state
-        #    a) Take the last 16 rows of base features
         next_features = self.features[self.current_index - 16 : self.current_index]
-
-        #    b) Calculate the current P/L
         if self.position_open:
-            # Mark-to-market using the current candle close
             current_price = self.data[self.current_index][3]
             if self.position_side == "long":
                 current_pl = (current_price - self.entry_price) / self.entry_price
-            else:  # short
+            else:
                 current_pl = (self.entry_price - current_price) / self.entry_price
         else:
-            # If no open position, use the last realized P/L or 0
             current_pl = self.trade_log[-1].profit if self.trade_log else 0.0
 
-        #    c) Append the P/L as a new column -> shape (16, 13)
         pl_column = np.full((next_features.shape[0], 1), current_pl)
         next_state = np.hstack((next_features, pl_column))
-
         return next_state, reward, done, {}
