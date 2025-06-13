@@ -43,6 +43,7 @@ class SimulatedOandaForexEnv:
         self.position_side = None
         self.entry_price = None
         self.trade_log = []
+        self.just_closed_profit = None
 
     def _fetch_initial_data(self):
         attempts = 0
@@ -82,6 +83,7 @@ class SimulatedOandaForexEnv:
         self.position_side = None
         self.entry_price = None
         self.trade_log = []
+        self.just_closed_profit = None
 
         base_features = self.features[self.current_index - 16 : self.current_index]  # Shape: (16, 6)
         current_pl = 0.0
@@ -109,17 +111,25 @@ class SimulatedOandaForexEnv:
 
     def compute_reward(self, action):
         """
-        Compute reward based on a simple model using the change in close price.
+        Compute reward in a manner consistent with the live environment.
+        1) If a trade was closed this step, return that realized profit.
+        2) If a position is open, return mark-to-market profit using the
+           current candle's close price.
+        3) Otherwise return 0.
         """
-        # Using the first feature (percentage change in close price) as the basis.
-        z_t = self.features[self.current_index - 1, 0]
-        if action == 0:  # long
-            delta = 1
-        elif action == 1:  # short
-            delta = -1
-        else:
-            delta = 0
-        return delta * z_t
+        if self.just_closed_profit is not None:
+            reward = self.just_closed_profit
+            self.just_closed_profit = None
+            return reward
+
+        if self.position_open:
+            current_price = self.data[self.current_index][3]
+            if self.position_side == "long":
+                return (current_price - self.entry_price) / self.entry_price
+            else:
+                return (self.entry_price - current_price) / self.entry_price
+
+        return 0.0
 
     def simulated_open_position(self, side):
         """
@@ -152,7 +162,8 @@ class SimulatedOandaForexEnv:
             self.position_open = False
             self.position_side = None
             self.entry_price = None
-
+            return profit
+        return None
     def step(self, action):
         """
         Execute one step in the simulated trading environment.
@@ -165,16 +176,22 @@ class SimulatedOandaForexEnv:
         if action == 0:  # long
             if not self.position_open or self.position_side != "long":
                 if self.position_open:
-                    self.simulated_close_position()
+                    profit = self.simulated_close_position()
+                    if profit is not None:
+                        self.just_closed_profit = profit
                 self.simulated_open_position("long")
         elif action == 1:  # short
             if not self.position_open or self.position_side != "short":
                 if self.position_open:
-                    self.simulated_close_position()
+                    profit = self.simulated_close_position()
+                    if profit is not None:
+                        self.just_closed_profit = profit
                 self.simulated_open_position("short")
         elif action == 2:  # neutral (close any open position)
             if self.position_open:
-                self.simulated_close_position()
+                profit = self.simulated_close_position()
+                if profit is not None:
+                    self.just_closed_profit = profit
 
         reward = self.compute_reward(action)
         self.current_index += 1
