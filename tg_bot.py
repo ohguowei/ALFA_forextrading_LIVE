@@ -39,8 +39,15 @@ async def start_trading(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Trading resumed.")
 
 def run_telegram_bot():
-    token = "7860224739:AAEj0Nts7nnihLDP21mz0yuDfYz5psd7i7Y"  # Replace with your actual token.
-    app = ApplicationBuilder().token(token).build()
+    try:
+        from local_config import TELEGRAM_BOT_TOKEN
+    except ImportError:
+        TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+    if not TELEGRAM_BOT_TOKEN:
+        raise ValueError("Telegram bot token not provided")
+
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))

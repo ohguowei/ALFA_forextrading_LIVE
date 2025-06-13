@@ -1,9 +1,22 @@
 # config.py
 # Base trading configuration
+import os
+
 class TradingConfig:
     GRANULARITY = "H1"
-#    CANDLE_COUNT = 5000
+    # CANDLE_COUNT = 5000
     CANDLE_COUNT = 136
+
+try:
+    from local_config import (
+        OANDA_ACCOUNT_ID as DEFAULT_ACCOUNT_ID,
+        OANDA_ACCESS_TOKEN as DEFAULT_ACCESS_TOKEN,
+        OANDA_ENVIRONMENT as DEFAULT_ENVIRONMENT,
+    )
+except ImportError:
+    DEFAULT_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID")
+    DEFAULT_ACCESS_TOKEN = os.getenv("OANDA_ACCESS_TOKEN")
+    DEFAULT_ENVIRONMENT = os.getenv("OANDA_ENVIRONMENT", "practice")
 
 class CurrencyConfig:
     def __init__(self, instrument, live_units, simulated_units, spread, account_id, access_token, environment):
@@ -22,9 +35,9 @@ CURRENCY_CONFIGS = {
         live_units=1000,
         simulated_units=1000,
         spread=0.0002,
-        account_id="101-001-26348919-001",
-        access_token="68ff286dfb6bc058031e66ddcdc72d64-138d97e64d2976820a19a4b179cdcf09",
-        environment="practice"
+        account_id=DEFAULT_ACCOUNT_ID,
+        access_token=DEFAULT_ACCESS_TOKEN,
+        environment=DEFAULT_ENVIRONMENT
      #   account_id="001-003-255162-003",
      #   access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
      #   environment="live"
@@ -35,9 +48,9 @@ CURRENCY_CONFIGS = {
          live_units=1000,
          simulated_units=1000,
          spread=0.0003,
-         account_id="101-001-26348919-001",
-         access_token="68ff286dfb6bc058031e66ddcdc72d64-138d97e64d2976820a19a4b179cdcf09",
-         environment="practice"
+        account_id=DEFAULT_ACCOUNT_ID,
+        access_token=DEFAULT_ACCESS_TOKEN,
+        environment=DEFAULT_ENVIRONMENT
       #   account_id="001-003-255162-003",
       #   access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
       #   environment="live"
@@ -48,9 +61,9 @@ CURRENCY_CONFIGS = {
          live_units=1000,
          simulated_units=1000,
          spread=0.0004,
-         account_id="101-001-26348919-001",
-         access_token="68ff286dfb6bc058031e66ddcdc72d64-138d97e64d2976820a19a4b179cdcf09",
-         environment="practice" 
+        account_id=DEFAULT_ACCOUNT_ID,
+        access_token=DEFAULT_ACCESS_TOKEN,
+        environment=DEFAULT_ENVIRONMENT
      #    account_id="001-003-255162-003",
      #    access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
      #    environment="live"
@@ -60,9 +73,9 @@ CURRENCY_CONFIGS = {
          live_units=1000,
          simulated_units=1000,
          spread=0.0002,
-         account_id="101-001-26348919-001",
-         access_token="68ff286dfb6bc058031e66ddcdc72d64-138d97e64d2976820a19a4b179cdcf09",
-         environment="practice"
+        account_id=DEFAULT_ACCOUNT_ID,
+        access_token=DEFAULT_ACCESS_TOKEN,
+        environment=DEFAULT_ENVIRONMENT
         
     #    #account_id="001-003-255162-002",
     #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
@@ -73,9 +86,9 @@ CURRENCY_CONFIGS = {
          live_units=1000,
          simulated_units=1000,
          spread=0.00055,
-         account_id="101-001-26348919-001",
-         access_token="68ff286dfb6bc058031e66ddcdc72d64-138d97e64d2976820a19a4b179cdcf09",
-         environment="practice"
+        account_id=DEFAULT_ACCOUNT_ID,
+        access_token=DEFAULT_ACCESS_TOKEN,
+        environment=DEFAULT_ENVIRONMENT
         
     #    #account_id="001-003-255162-002",
     #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
@@ -86,9 +99,9 @@ CURRENCY_CONFIGS = {
          live_units=1000,
          simulated_units=1000,
          spread=0.00015,
-         account_id="101-001-26348919-001",
-         access_token="68ff286dfb6bc058031e66ddcdc72d64-138d97e64d2976820a19a4b179cdcf09",
-         environment="practice"
+        account_id=DEFAULT_ACCOUNT_ID,
+        access_token=DEFAULT_ACCESS_TOKEN,
+        environment=DEFAULT_ENVIRONMENT
         
     #    #account_id="001-003-255162-002",
     #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",

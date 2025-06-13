@@ -57,9 +57,6 @@ class LiveOandaForexEnv:
         self.just_closed_profit = None
         self._sync_oanda_position_state()
         
-        print("Access token:", self.account_id)
-        print("Access token:", self.access_token)
-        print("Environment:", self.environment)
 
     def _sync_oanda_position_state(self):
         """
