@@ -10,13 +10,22 @@ from config import CURRENCY_CONFIGS, TradingConfig, set_global_seed
 from simulated_env import SimulatedOandaForexEnv
 
 
-def evaluate_model(model, currency_config, episodes: int = 3, steps: int = 50):
-    """Run a short evaluation in a simulated environment and print
-    detailed metrics about the model's quality."""
+def evaluate_model(
+    model,
+    currency_config,
+    episodes: int = 3,
+    candle_count: int = 5000,
+):
+    """Evaluate a model in a simulated environment using the full candle set.
+
+    This runs each episode over ``candle_count`` candles instead of a short
+    fixed number of steps. Additional statistics such as profit factor and
+    maximum drawdown are printed for a more thorough assessment.
+    """
 
     env = SimulatedOandaForexEnv(
         currency_config,
-        candle_count=TradingConfig.CANDLE_COUNT,
+        candle_count=candle_count,
         granularity=TradingConfig.GRANULARITY,
     )
 
@@ -31,7 +40,8 @@ def evaluate_model(model, currency_config, episodes: int = 3, steps: int = 50):
         decisions = torch.zeros((1, 16), dtype=torch.float32)
         episode_reward = 0.0
 
-        for _ in range(steps):
+        done = False
+        while not done:
             with torch.no_grad():
                 logits, _ = model(state, decisions)
                 probs = torch.softmax(logits, dim=1)
@@ -54,9 +64,17 @@ def evaluate_model(model, currency_config, episodes: int = 3, steps: int = 50):
     if profits:
         avg_profit = sum(profits) / len(profits)
         win_rate = sum(p > 0 for p in profits) / len(profits)
+        positive = sum(p for p in profits if p > 0)
+        negative = abs(sum(p for p in profits if p < 0))
+        profit_factor = positive / negative if negative else float("inf")
+        cumulative = torch.tensor(profits).cumsum(0)
+        max_cum = torch.maximum(cumulative, cumulative.clone().cummax(0)[0])
+        drawdown = (max_cum - cumulative).max().item()
     else:
         avg_profit = 0.0
         win_rate = 0.0
+        profit_factor = 0.0
+        drawdown = 0.0
 
     total_actions = sum(action_counts)
     if total_actions > 0:
@@ -76,8 +94,12 @@ def evaluate_model(model, currency_config, episodes: int = 3, steps: int = 50):
         f"short {action_dist[1]*100:.1f}%, "
         f"neutral {action_dist[2]*100:.1f}%"
     )
+    print(f"  Profit factor: {profit_factor:.2f}")
+    print(f"  Max drawdown: {drawdown:.4f}")
 
     return avg_reward, avg_profit, win_rate
+
+
 
 # Directory to save models per currency.
 MODEL_DIR = "./models/"
