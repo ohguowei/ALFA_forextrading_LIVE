@@ -5,7 +5,41 @@ import torch.optim as optim
 
 from models import ActorCritic
 from worker import worker
-from config import CURRENCY_CONFIGS
+from config import CURRENCY_CONFIGS, TradingConfig
+from simulated_env import SimulatedOandaForexEnv
+
+
+def evaluate_model(model, currency_config, episodes: int = 3, steps: int = 50):
+    """Run a short evaluation in a simulated environment and report the
+    average reward."""
+    env = SimulatedOandaForexEnv(
+        currency_config,
+        candle_count=TradingConfig.CANDLE_COUNT,
+        granularity=TradingConfig.GRANULARITY,
+    )
+    model.eval()
+    total_reward = 0.0
+    for _ in range(episodes):
+        state = torch.tensor(env.reset(), dtype=torch.float32).unsqueeze(0)
+        decisions = torch.zeros((1, 16), dtype=torch.float32)
+        episode_reward = 0.0
+        for _ in range(steps):
+            with torch.no_grad():
+                logits, _ = model(state, decisions)
+                probs = torch.softmax(logits, dim=1)
+                action = torch.multinomial(probs, num_samples=1).item()
+            next_state, reward, done, _ = env.step(action)
+            episode_reward += reward
+            if done or next_state is None:
+                break
+            state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
+        total_reward += episode_reward
+    avg_reward = total_reward / episodes
+    print(
+        f"Evaluation result for {currency_config.instrument}: "
+        f"avg reward {avg_reward:.4f} over {episodes} episodes"
+    )
+    return avg_reward
 
 # Directory to save models per currency.
 MODEL_DIR = "./models/"
@@ -57,6 +91,9 @@ def main():
         # Save the updated model.
         torch.save(model.state_dict(), os.path.join(MODEL_DIR, f"{currency}.pt"))
         print(f"--- Finished training cycle for {currency} ---")
+
+        # Evaluate the trained model on a simulated environment
+        evaluate_model(model, currency_config)
 
 if __name__ == "__main__":
     main()
