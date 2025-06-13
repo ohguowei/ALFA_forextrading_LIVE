@@ -68,7 +68,7 @@ def worker(worker_id: int,
                 else:
                     advantage = reward_t + gamma * next_value - value
 
-                policy_loss = -torch.log(probs[0, action_idx]) * advantage.detach()
+                policy_loss = -torch.log(probs[0, action_idx] + 1e-8) * advantage.detach()
                 value_loss = advantage.pow(2)
                 loss = policy_loss + value_loss
                 
