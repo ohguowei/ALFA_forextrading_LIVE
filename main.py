@@ -145,8 +145,14 @@ def trading_loop():
         model_path = os.path.join(MODEL_DIR, f"{currency}.pt")
         currency_model = ActorCritic()
         if os.path.exists(model_path):
-            currency_model.load_state_dict(torch.load(model_path))
-            print(f"Loaded existing model for {currency}.")
+            try:
+                currency_model.load_state_dict(torch.load(model_path))
+                print(f"Loaded existing model for {currency}.")
+            except Exception as e:
+                print(
+                    f"Failed to load model for {currency}: {e}. "
+                    "Initializing a new model instead."
+                )
         else:
             print(f"Initializing new model for {currency}.")
         currency_model.share_memory()
@@ -176,10 +182,18 @@ def trading_loop():
                     # Reload the latest saved model weights for the currency.
                     model_path = os.path.join(MODEL_DIR, f"{currency}.pt")
                     if os.path.exists(model_path):
-                        models[currency].load_state_dict(torch.load(model_path))
-                        print(f"Reloaded latest model for {currency}.")
+                        try:
+                            models[currency].load_state_dict(torch.load(model_path))
+                            print(f"Reloaded latest model for {currency}.")
+                        except Exception as e:
+                            print(
+                                f"Failed to reload model for {currency}: {e}. "
+                                "Continuing with in-memory weights."
+                            )
                     else:
-                        print(f"No saved model file for {currency}; using current in-memory model.")
+                        print(
+                            f"No saved model file for {currency}; using current in-memory model."
+                        )
 
                     print(f"\n--- Trading cycle for {currency} ---")
                     model = models[currency]
