@@ -12,6 +12,21 @@ from worker import worker
 from live_env import LiveOandaForexEnv
 from config import TradingConfig, CURRENCY_CONFIGS
 
+
+def summarize_trade_log(trades):
+    """Print a simple quality summary for a list of trades."""
+    if not trades:
+        print("No trades executed during this cycle.")
+        return
+    profits = [t.profit for t in trades]
+    win_rate = sum(p > 0 for p in profits) / len(profits)
+    avg_profit = sum(profits) / len(profits)
+    print(
+        f"Trade summary: {len(trades)} trades, "
+        f"win rate {win_rate*100:.1f}%, "
+        f"avg profit {avg_profit:.4f}"
+    )
+
 MODEL_DIR = "./models/"
 
 def wait_for_trading_window():
@@ -70,6 +85,7 @@ def trade_live(currency_model, live_env, num_steps=10):
         else:
             break
     print("[Trading] Finished trading cycle.")
+    summarize_trade_log(live_env.trade_log)
     if live_env.trade_log:
         last_trade = live_env.trade_log[-1]
         tg_bot.last_trade_status = str(last_trade)
