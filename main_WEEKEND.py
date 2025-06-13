@@ -19,8 +19,10 @@ def evaluate_model(
     """Evaluate a model in a simulated environment using the full candle set.
 
     This runs each episode over ``candle_count`` candles instead of a short
-    fixed number of steps. Additional statistics such as profit factor and
-    maximum drawdown are printed for a more thorough assessment.
+    fixed number of steps. The evaluation uses greedy action selection
+    by choosing the action with the highest predicted probability. Additional
+    statistics such as profit factor and maximum drawdown are printed for a
+    more thorough assessment.
     """
 
     env = SimulatedOandaForexEnv(
@@ -45,7 +47,7 @@ def evaluate_model(
             with torch.no_grad():
                 logits, _ = model(state, decisions)
                 probs = torch.softmax(logits, dim=1)
-                action = torch.multinomial(probs, num_samples=1).item()
+                action = torch.argmax(probs, dim=1).item()
 
             action_counts[action] += 1
             next_state, reward, done, _ = env.step(action)
