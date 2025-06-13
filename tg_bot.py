@@ -2,6 +2,8 @@
 import os
 import sys
 import threading
+import urllib.parse
+import urllib.request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
@@ -37,6 +39,27 @@ async def stop_trading(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_trading(update: Update, context: ContextTypes.DEFAULT_TYPE):
     trading_event.set()  # Resumes the trading loop.
     await update.message.reply_text("Trading resumed.")
+
+def send_telegram_message(text: str) -> None:
+    """Send a simple text message via the Telegram bot."""
+    try:
+        from local_config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+    except ImportError:
+        TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+        TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Telegram credentials not provided; message not sent.")
+        return
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    data = urllib.parse.urlencode({"chat_id": TELEGRAM_CHAT_ID, "text": text}).encode()
+    try:
+        with urllib.request.urlopen(url, data=data, timeout=10) as resp:
+            if resp.status != 200:
+                print(f"Failed to send Telegram message: {resp.status}")
+    except Exception as exc:
+        print(f"Error sending Telegram message: {exc}")
 
 def run_telegram_bot():
     try:

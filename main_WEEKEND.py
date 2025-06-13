@@ -4,6 +4,8 @@ import threading
 import torch
 import torch.optim as optim
 
+from tg_bot import send_telegram_message
+
 from models import ActorCritic
 from worker import worker
 from config import CURRENCY_CONFIGS, TradingConfig, set_global_seed
@@ -177,3 +179,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    send_telegram_message("Weekend training cycle completed.")
