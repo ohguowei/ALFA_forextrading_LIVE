@@ -22,7 +22,6 @@ class Trade:
         self.exit_price = exit_price
         self.profit = profit
         self.timestamp = timestamp
-        self.just_closed_profit = None  # <--- NEW
 
     def __repr__(self):
         return (
