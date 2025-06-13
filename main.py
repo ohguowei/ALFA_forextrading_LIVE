@@ -1,4 +1,5 @@
 import os
+import argparse
 import datetime
 import time
 import threading
@@ -10,7 +11,7 @@ import tg_bot  # Contains Telegram bot logic and global "last_trade_status"
 from models import ActorCritic
 from worker import worker
 from live_env import LiveOandaForexEnv
-from config import TradingConfig, CURRENCY_CONFIGS
+from config import TradingConfig, CURRENCY_CONFIGS, set_global_seed
 
 
 def summarize_trade_log(trades):
@@ -214,9 +215,27 @@ def trading_loop():
             time.sleep(60)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--seed",
+        type=int,
+        help="Random seed for reproducibility",
+    )
+    args, _ = parser.parse_known_args()
+    seed = args.seed
+    if seed is None:
+        env_seed = os.getenv("SEED")
+        if env_seed is not None:
+            try:
+                seed = int(env_seed)
+            except ValueError:
+                seed = None
+    if seed is not None:
+        set_global_seed(seed)
+
     # Start the trading loop in a background thread.
     trading_thread = threading.Thread(target=trading_loop, daemon=True)
     trading_thread.start()
-    
+
     # Run the Telegram bot in the main thread.
     tg_bot.run_telegram_bot()

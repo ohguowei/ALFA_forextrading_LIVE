@@ -1,6 +1,11 @@
 # config.py
 # Base trading configuration
 import os
+import random
+from typing import Optional
+
+import numpy as np
+import torch
 
 class TradingConfig:
     GRANULARITY = "H1"
@@ -17,6 +22,13 @@ except ImportError:
     DEFAULT_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID")
     DEFAULT_ACCESS_TOKEN = os.getenv("OANDA_ACCESS_TOKEN")
     DEFAULT_ENVIRONMENT = os.getenv("OANDA_ENVIRONMENT", "practice")
+
+
+def set_global_seed(seed: int) -> None:
+    """Seed random number generators for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 class CurrencyConfig:
     def __init__(self, instrument, live_units, simulated_units, spread, account_id, access_token, environment):
