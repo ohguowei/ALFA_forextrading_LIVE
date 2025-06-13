@@ -8,13 +8,16 @@ from simulated_env import SimulatedOandaForexEnv
 from models import ActorCritic
 from config import TradingConfig
 
-def worker(worker_id: int, 
-           global_model: ActorCritic, 
-           optimizer: torch.optim.Optimizer, 
-           optimizer_lock: Lock, 
-           max_steps: int = 20, 
+
+def worker(worker_id: int,
+           global_model: ActorCritic,
+           optimizer: torch.optim.Optimizer,
+           optimizer_lock: Lock,
+           max_steps: int = 20,
            currency_config=None,
-           barrier=None):
+           barrier=None,
+           gamma: float = 0.99,
+           accumulate_returns: bool = False):
     if currency_config is None:
         raise ValueError("Currency config is required for worker")
     if barrier is None:
@@ -34,6 +37,7 @@ def worker(worker_id: int,
     decisions_t = torch.tensor(decisions, dtype=torch.float32)
     
     step_count = 0
+    returns = torch.tensor([[0.0]], dtype=torch.float32)
     while step_count < max_steps:
         try:
             # Lock the entire training iteration to avoid concurrent modifications.
@@ -47,10 +51,23 @@ def worker(worker_id: int,
                 # Perform the environment step while holding the lock.
                 # (This may slow training but prevents the in-place modification error.)
                 next_state, reward, done, _ = env.step(action_idx)
-                
-                # Compute loss.
+
                 reward_t = torch.tensor([[reward]], dtype=torch.float32)
-                advantage = reward_t - value
+
+                # Estimate value of next state for bootstrapping
+                if done or next_state is None:
+                    next_value = torch.tensor([[0.0]], dtype=torch.float32)
+                else:
+                    next_state_t = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
+                    with torch.no_grad():
+                        _, next_value = global_model(next_state_t, decisions_t)
+
+                if accumulate_returns:
+                    returns[:] = reward_t + gamma * returns
+                    advantage = returns - value
+                else:
+                    advantage = reward_t + gamma * next_value - value
+
                 policy_loss = -torch.log(probs[0, action_idx]) * advantage.detach()
                 value_loss = advantage.pow(2)
                 loss = policy_loss + value_loss
@@ -62,6 +79,7 @@ def worker(worker_id: int,
             # Release the lock and update the state.
             if done or next_state is None:
                 state = env.reset()
+                returns[:] = 0
             else:
                 state = next_state
             state_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
