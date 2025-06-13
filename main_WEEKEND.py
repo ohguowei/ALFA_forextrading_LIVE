@@ -1,11 +1,12 @@
 import os
+import argparse
 import threading
 import torch
 import torch.optim as optim
 
 from models import ActorCritic
 from worker import worker
-from config import CURRENCY_CONFIGS, TradingConfig
+from config import CURRENCY_CONFIGS, TradingConfig, set_global_seed
 from simulated_env import SimulatedOandaForexEnv
 
 
@@ -82,6 +83,24 @@ def evaluate_model(model, currency_config, episodes: int = 3, steps: int = 50):
 MODEL_DIR = "./models/"
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--seed",
+        type=int,
+        help="Random seed for reproducibility",
+    )
+    args = parser.parse_args()
+    seed = args.seed
+    if seed is None:
+        env_seed = os.getenv("SEED")
+        if env_seed is not None:
+            try:
+                seed = int(env_seed)
+            except ValueError:
+                seed = None
+    if seed is not None:
+        set_global_seed(seed)
+
     # Set training parameters for the weekend training script.
     num_workers = 200       # Use 100 worker threads.
     train_steps = 121      # Each worker runs 121 training steps.
