@@ -2,6 +2,8 @@ import torch
 from typing import Tuple
 from collections import deque
 
+from preprocessing import encode_decision_history
+
 from models import ActorCritic
 from simulated_env import SimulatedOandaForexEnv
 from config import TradingConfig
@@ -35,8 +37,8 @@ def evaluate_model(
 
     for _ in range(episodes):
         state = torch.tensor(env.reset(), dtype=torch.float32).unsqueeze(0)
-        decision_history = deque([0] * 16, maxlen=16)
-        decisions = torch.tensor(decision_history, dtype=torch.float32).unsqueeze(0)
+        decision_history = deque([2] * 16, maxlen=16)
+        decisions = encode_decision_history(decision_history)
         episode_reward = 0.0
         done = False
         while not done:
@@ -48,7 +50,7 @@ def evaluate_model(
             action_counts[action] += 1
             next_state, reward, done, _ = env.step(action)
             decision_history.append(action)
-            decisions = torch.tensor(decision_history, dtype=torch.float32).unsqueeze(0)
+            decisions = encode_decision_history(decision_history)
             episode_reward += reward
 
             if done or next_state is None:
@@ -126,8 +128,8 @@ def feature_importance(model: ActorCritic, currency_config, episodes: int = 3):
 
     for _ in range(episodes):
         state = torch.tensor(env.reset(), dtype=torch.float32).unsqueeze(0)
-        decision_history = deque([0] * 16, maxlen=16)
-        decisions = torch.tensor(decision_history, dtype=torch.float32).unsqueeze(0)
+        decision_history = deque([2] * 16, maxlen=16)
+        decisions = encode_decision_history(decision_history)
         done = False
 
         while not done:
@@ -147,7 +149,7 @@ def feature_importance(model: ActorCritic, currency_config, episodes: int = 3):
 
             next_state, _, done, _ = env.step(action.item())
             decision_history.append(action.item())
-            decisions = torch.tensor(decision_history, dtype=torch.float32).unsqueeze(0)
+            decisions = encode_decision_history(decision_history)
             if done or next_state is None:
                 break
             state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)

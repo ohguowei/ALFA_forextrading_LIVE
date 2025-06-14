@@ -6,8 +6,19 @@ import torch.nn.functional as F
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, input_size=7, decision_dim=16, hidden_size=128, num_actions=3, num_lstm_layers=4):
-        super(ActorCritic, self).__init__()
+    """Combined actor-critic network."""
+
+    def __init__(
+        self,
+        input_size: int = 7,
+        decision_history_len: int = 16,
+        hidden_size: int = 128,
+        num_actions: int = 3,
+        num_lstm_layers: int = 4,
+    ) -> None:
+        """Initialize the network."""
+        super().__init__()
+        decision_dim = decision_history_len * num_actions
         # Actor branch with a deeper LSTM (2 layers)
         self.actor_lstm = nn.LSTM(input_size, hidden_size, num_layers=num_lstm_layers, batch_first=True)
         self.actor_fc1 = nn.Linear(hidden_size, 32)
@@ -22,7 +33,8 @@ class ActorCritic(nn.Module):
         self.critic_fc3 = nn.Linear(64, 64)
         self.critic_output = nn.Linear(64, 1)
         
-    def forward(self, state, decisions):
+    def forward(self, state: torch.Tensor, decisions: torch.Tensor):
+        """Return policy logits and state-value estimate."""
         # Actor forward pass
         actor_out, _ = self.actor_lstm(state)
         actor_last = actor_out[:, -1, :]  # Take output of the final time step
