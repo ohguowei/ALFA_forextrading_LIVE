@@ -3,6 +3,8 @@ import numpy as np
 import traceback
 from collections import deque
 
+from preprocessing import encode_decision_history
+
 from simulated_env import SimulatedOandaForexEnv
 from models import ActorCritic
 from config import TradingConfig
@@ -63,18 +65,15 @@ def worker(
     
     # Get the initial state and initialize decision history.
     state = env.reset()  # Expected shape: (time_window, features)
-    decision_history = deque([0] * 16, maxlen=16)
-    decisions = np.array(decision_history, dtype=np.float32).reshape(1, -1)
+    decision_history = deque([2] * 16, maxlen=16)
+    decisions_t = encode_decision_history(decision_history)
     state_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
     
     step_count = 0
     returns = torch.tensor([[0.0]], dtype=torch.float32)
     while step_count < max_steps:
         try:
-            decisions = np.array(decision_history, dtype=np.float32).reshape(
-                1, -1
-            )
-            decisions_t = torch.tensor(decisions, dtype=torch.float32)
+            decisions_t = encode_decision_history(decision_history)
             with model_lock:
                 policy_logits, value = global_model(state_t, decisions_t)
                 probs = torch.softmax(policy_logits, dim=1)
@@ -122,7 +121,7 @@ def worker(
             # Update the state and history.
             if done or next_state is None:
                 state = env.reset()
-                decision_history = deque([0] * 16, maxlen=16)
+                decision_history = deque([2] * 16, maxlen=16)
                 returns[:] = 0
             else:
                 state = next_state
@@ -136,7 +135,27 @@ def worker(
     
         # Optionally, print progress or debugging info here.
     
-    print(f"[Worker {worker_id}] Finished training cycle at step {step_count}.")
+    print(
+        f"[Worker {worker_id}] Finished training cycle at step {step_count}."
+    )
+
+    if env.position_open:
+        profit = env.simulated_close_position()
+        if profit is not None:
+            final_reward = float(np.clip(profit, -1.0, 1.0))
+            decisions_t = encode_decision_history(decision_history)
+            reward_t = torch.tensor([[final_reward]], dtype=torch.float32)
+            with model_lock:
+                _, value = global_model(state_t, decisions_t)
+                if accumulate_returns:
+                    returns[:] = reward_t + gamma * returns
+                    advantage = returns - value
+                else:
+                    advantage = reward_t - value
+                value_loss = advantage.pow(2)
+                optimizer.zero_grad()
+                value_loss.backward()
+                optimizer.step()
     
     # Wait at the barrier to signal completion to the main thread.
     barrier.wait()

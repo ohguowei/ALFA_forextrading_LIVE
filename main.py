@@ -8,6 +8,8 @@ import torch
 import torch.optim as optim
 from collections import deque
 
+from preprocessing import encode_decision_history
+
 import tg_bot  # Contains Telegram bot logic and global "last_trade_status"
 from models import ActorCritic
 from worker import worker
@@ -72,8 +74,8 @@ def trade_live(currency_model, live_env, num_steps=10):
     """
     currency_model.eval()
     state = live_env.reset()
-    decision_history = deque([0] * 16, maxlen=16)
-    decisions = torch.tensor(decision_history, dtype=torch.float32).unsqueeze(0)
+    decision_history = deque([2] * 16, maxlen=16)
+    decisions = encode_decision_history(decision_history)
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
     
     for step in range(num_steps):
@@ -84,7 +86,7 @@ def trade_live(currency_model, live_env, num_steps=10):
         print(f"[Trading] Step {step}, Action: {action}")
         next_state, reward, done, _ = live_env.step(action)
         decision_history.append(action)
-        decisions = torch.tensor(decision_history, dtype=torch.float32).unsqueeze(0)
+        decisions = encode_decision_history(decision_history)
         print(f"[Trading] Reward: {reward}")
         if not done and next_state is not None:
             state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
