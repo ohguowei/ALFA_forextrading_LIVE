@@ -62,15 +62,24 @@ def main():
         barrier = threading.Barrier(num_workers + 1)
         action_counts = [0, 0, 0]
         action_lock = threading.Lock()
+        model_lock = threading.Lock()
 
         workers = []
         for i in range(num_workers):
             t = threading.Thread(
                 target=worker,
-                args=(i, model, optimizer, train_steps, currency_config, barrier),
+                args=(
+                    i,
+                    model,
+                    optimizer,
+                    train_steps,
+                    currency_config,
+                    barrier,
+                ),
                 kwargs={
                     "action_counts": action_counts,
                     "action_lock": action_lock,
+                    "model_lock": model_lock,
                 },
                 daemon=True
             )
