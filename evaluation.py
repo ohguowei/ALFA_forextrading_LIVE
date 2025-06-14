@@ -1,0 +1,108 @@
+import torch
+from typing import Tuple
+
+from models import ActorCritic
+from simulated_env import SimulatedOandaForexEnv
+from config import TradingConfig
+
+
+def evaluate_model(
+    model: ActorCritic,
+    currency_config,
+    episodes: int = 3,
+    candle_count: int = 5000,
+) -> Tuple[float, float, float]:
+    """Evaluate a model in a simulated environment.
+
+    Runs ``episodes`` episodes using ``candle_count`` candles. Actions are chosen
+    greedily from the policy. A detailed report including profit factor and
+    maximum drawdown is printed.
+
+    Returns average reward, average profit and win rate.
+    """
+    env = SimulatedOandaForexEnv(
+        currency_config,
+        candle_count=candle_count,
+        granularity=TradingConfig.GRANULARITY,
+    )
+
+    model.eval()
+    total_reward = 0.0
+    total_trades = 0
+    profits = []
+    action_counts = [0, 0, 0]
+
+    for _ in range(episodes):
+        state = torch.tensor(env.reset(), dtype=torch.float32).unsqueeze(0)
+        decisions = torch.zeros((1, 16), dtype=torch.float32)
+        episode_reward = 0.0
+        done = False
+        while not done:
+            with torch.no_grad():
+                logits, _ = model(state, decisions)
+                probs = torch.softmax(logits, dim=1)
+                action = torch.argmax(probs, dim=1).item()
+
+            action_counts[action] += 1
+            next_state, reward, done, _ = env.step(action)
+            episode_reward += reward
+
+            if done or next_state is None:
+                break
+
+            state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
+
+        total_reward += episode_reward
+        profits.extend(t.profit for t in env.trade_log)
+        total_trades += len(env.trade_log)
+
+    avg_reward = total_reward / episodes
+    if profits:
+        avg_profit = sum(profits) / len(profits)
+        win_rate = sum(p > 0 for p in profits) / len(profits)
+        positive = sum(p for p in profits if p > 0)
+        negative = abs(sum(p for p in profits if p < 0))
+        profit_factor = positive / negative if negative else float("inf")
+        cumulative = torch.tensor(profits).cumsum(0)
+        max_cum = torch.maximum(cumulative, cumulative.clone().cummax(0)[0])
+        drawdown = (max_cum - cumulative).max().item()
+    else:
+        avg_profit = 0.0
+        win_rate = 0.0
+        profit_factor = 0.0
+        drawdown = 0.0
+
+    total_actions = sum(action_counts)
+    if total_actions > 0:
+        action_dist = [c / total_actions for c in action_counts]
+    else:
+        action_dist = [0.0, 0.0, 0.0]
+
+    print(f"Evaluation result for {currency_config.instrument}:")
+    print(f"  Avg reward per episode: {avg_reward:.4f}")
+    print(
+        f"  Trades: {total_trades}, Win rate: {win_rate*100:.1f}%, "
+        f"Avg profit: {avg_profit:.4f}"
+    )
+    print(
+        "  Action distribution: "
+        f"long {action_dist[0]*100:.1f}%, "
+        f"short {action_dist[1]*100:.1f}%, "
+        f"neutral {action_dist[2]*100:.1f}%"
+    )
+    print(f"  Profit factor: {profit_factor:.2f}")
+    print(f"  Max drawdown: {drawdown:.4f}")
+
+    return avg_reward, avg_profit, win_rate
+
+
+def models_are_equal(path_a: str, path_b: str) -> bool:
+    """Return True if two saved ActorCritic models have identical parameters."""
+    model_a = ActorCritic()
+    model_b = ActorCritic()
+    model_a.load_state_dict(torch.load(path_a))
+    model_b.load_state_dict(torch.load(path_b))
+    for p1, p2 in zip(model_a.parameters(), model_b.parameters()):
+        if not torch.equal(p1, p2):
+            return False
+    return True
