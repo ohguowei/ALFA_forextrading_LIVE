@@ -104,14 +104,13 @@ def run_training_cycle(models, num_workers, train_steps, training_label):
         print(f"\n--- {training_label} Training cycle for {currency} ---")
         model = models[currency]
         optimizer = optim.Adam(model.parameters(), lr=0.00004)
-        optimizer_lock = threading.Lock()
         barrier = threading.Barrier(num_workers + 1)
         
         workers = []
         for i in range(num_workers):
             t = threading.Thread(
                 target=worker,
-                args=(i, model, optimizer, optimizer_lock, train_steps, currency_config, barrier),
+                args=(i, model, optimizer, train_steps, currency_config, barrier),
                 daemon=True
             )
             workers.append(t)
