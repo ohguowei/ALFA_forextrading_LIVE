@@ -153,6 +153,7 @@ def run_training_cycle(models, num_workers, train_steps, training_label):
         print(f"--- Finished {training_label} Training cycle for {currency} ---")
 
 def training_process(models, num_workers_full, train_steps_full):
+    """Launch a full training cycle in a lower priority process."""
     try:
         # Increase niceness by 10 to lower priority (macOS uses os.nice)
         os.nice(10)
@@ -161,10 +162,10 @@ def training_process(models, num_workers_full, train_steps_full):
         print("Error setting process niceness:", e)
     run_training_cycle(models, num_workers_full, train_steps_full, "FULL")
 
-def trading_loop():
+def trading_loop(train_steps_full=121):
+    """Main trading loop coordinating training and live trading."""
     # Full training (60-minute) settings.
     num_workers_full = 100      # 100 workers
-    train_steps_full = 121      # Training steps for full training
 
     trade_steps = 1             # Trading steps per trading cycle
 
@@ -251,6 +252,11 @@ if __name__ == "__main__":
         type=int,
         help="Random seed for reproducibility",
     )
+    parser.add_argument(
+        "--train-steps",
+        type=int,
+        help="Training steps for each worker during full training",
+    )
     args, _ = parser.parse_known_args()
     seed = args.seed
     if seed is None:
@@ -263,8 +269,23 @@ if __name__ == "__main__":
     if seed is not None:
         set_global_seed(seed)
 
+    train_steps_full = args.train_steps
+    if train_steps_full is None:
+        env_steps = os.getenv("TRAIN_STEPS")
+        if env_steps is not None:
+            try:
+                train_steps_full = int(env_steps)
+            except ValueError:
+                train_steps_full = None
+    if train_steps_full is None:
+        train_steps_full = 121
+
     # Start the trading loop in a background thread.
-    trading_thread = threading.Thread(target=trading_loop, daemon=True)
+    trading_thread = threading.Thread(
+        target=trading_loop,
+        kwargs={"train_steps_full": train_steps_full},
+        daemon=True,
+    )
     trading_thread.start()
 
     # Run the Telegram bot in the main thread.
