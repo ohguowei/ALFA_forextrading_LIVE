@@ -136,7 +136,30 @@ def worker(
     
         # Optionally, print progress or debugging info here.
     
-    print(f"[Worker {worker_id}] Finished training cycle at step {step_count}.")
+    print(
+        f"[Worker {worker_id}] Finished training cycle at step {step_count}."
+    )
+
+    if env.position_open:
+        profit = env.simulated_close_position()
+        if profit is not None:
+            final_reward = float(np.clip(profit, -1.0, 1.0))
+            decisions = np.array(
+                decision_history, dtype=np.float32
+            ).reshape(1, -1)
+            decisions_t = torch.tensor(decisions, dtype=torch.float32)
+            reward_t = torch.tensor([[final_reward]], dtype=torch.float32)
+            with model_lock:
+                _, value = global_model(state_t, decisions_t)
+                if accumulate_returns:
+                    returns[:] = reward_t + gamma * returns
+                    advantage = returns - value
+                else:
+                    advantage = reward_t - value
+                value_loss = advantage.pow(2)
+                optimizer.zero_grad()
+                value_loss.backward()
+                optimizer.step()
     
     # Wait at the barrier to signal completion to the main thread.
     barrier.wait()
