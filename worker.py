@@ -19,6 +19,7 @@ def worker(
     accumulate_returns: bool = False,
     action_counts=None,
     action_lock=None,
+    model_lock=None,
 ):
     """Run a training loop on a simulated environment.
 
@@ -44,13 +45,16 @@ def worker(
         Shared list counting how often each action is taken.
     action_lock : threading.Lock, optional
         Lock guarding ``action_counts`` updates.
+    model_lock : threading.Lock, optional
+        Lock guarding updates to ``global_model``.
     """
     if currency_config is None:
         raise ValueError("Currency config is required for worker")
     if barrier is None:
         raise ValueError("Barrier is required for synchronization")
     
-    # Instantiate the simulated environment using the provided currency configuration.
+    # Instantiate the simulated environment with the provided currency
+    # configuration.
     env = SimulatedOandaForexEnv(
         currency_config,
         candle_count=TradingConfig.CANDLE_COUNT,
@@ -67,47 +71,53 @@ def worker(
     returns = torch.tensor([[0.0]], dtype=torch.float32)
     while step_count < max_steps:
         try:
-            decisions = np.array(decision_history, dtype=np.float32).reshape(1, -1)
+            decisions = np.array(decision_history, dtype=np.float32).reshape(
+                1, -1
+            )
             decisions_t = torch.tensor(decisions, dtype=torch.float32)
-            # Forward pass and action selection.
-            policy_logits, value = global_model(state_t, decisions_t)
-            probs = torch.softmax(policy_logits, dim=1)
-            action = torch.multinomial(probs, num_samples=1)
-            action_idx = action.item()
+            with model_lock:
+                policy_logits, value = global_model(state_t, decisions_t)
+                probs = torch.softmax(policy_logits, dim=1)
+                action = torch.multinomial(probs, num_samples=1)
+                action_idx = action.item()
 
-            if action_counts is not None:
-                if action_lock is not None:
-                    with action_lock:
+                if action_counts is not None:
+                    if action_lock is not None:
+                        with action_lock:
+                            action_counts[action_idx] += 1
+                    else:
                         action_counts[action_idx] += 1
+
+                next_state, reward, done, _ = env.step(action_idx)
+                decision_history.append(action_idx)
+
+                reward_t = torch.tensor([[reward]], dtype=torch.float32)
+
+                if done or next_state is None:
+                    next_value = torch.tensor([[0.0]], dtype=torch.float32)
                 else:
-                    action_counts[action_idx] += 1
+                    next_state_t = torch.tensor(
+                        next_state, dtype=torch.float32
+                    ).unsqueeze(0)
+                    with torch.no_grad():
+                        _, next_value = global_model(next_state_t, decisions_t)
 
-            next_state, reward, done, _ = env.step(action_idx)
-            decision_history.append(action_idx)
+                if accumulate_returns:
+                    returns[:] = reward_t + gamma * returns
+                    advantage = returns - value
+                else:
+                    advantage = reward_t + gamma * next_value - value
 
-            reward_t = torch.tensor([[reward]], dtype=torch.float32)
+                policy_loss = (
+                    -torch.log(probs[0, action_idx] + 1e-8)
+                    * advantage.detach()
+                )
+                value_loss = advantage.pow(2)
+                loss = policy_loss + value_loss
 
-            # Estimate value of next state for bootstrapping
-            if done or next_state is None:
-                next_value = torch.tensor([[0.0]], dtype=torch.float32)
-            else:
-                next_state_t = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
-                with torch.no_grad():
-                    _, next_value = global_model(next_state_t, decisions_t)
-
-            if accumulate_returns:
-                returns[:] = reward_t + gamma * returns
-                advantage = returns - value
-            else:
-                advantage = reward_t + gamma * next_value - value
-
-            policy_loss = -torch.log(probs[0, action_idx] + 1e-8) * advantage.detach()
-            value_loss = advantage.pow(2)
-            loss = policy_loss + value_loss
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
             
             # Update the state and history.
             if done or next_state is None:
