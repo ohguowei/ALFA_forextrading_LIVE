@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import traceback
+from collections import deque
 
 from simulated_env import SimulatedOandaForexEnv
 from models import ActorCritic
@@ -56,16 +57,18 @@ def worker(
         granularity=TradingConfig.GRANULARITY
     )
     
-    # Get the initial state and create an initial decisions vector.
+    # Get the initial state and initialize decision history.
     state = env.reset()  # Expected shape: (time_window, features)
-    decisions = np.zeros((1, 16), dtype=np.float32)
+    decision_history = deque([0] * 16, maxlen=16)
+    decisions = np.array(decision_history, dtype=np.float32).reshape(1, -1)
     state_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-    decisions_t = torch.tensor(decisions, dtype=torch.float32)
     
     step_count = 0
     returns = torch.tensor([[0.0]], dtype=torch.float32)
     while step_count < max_steps:
         try:
+            decisions = np.array(decision_history, dtype=np.float32).reshape(1, -1)
+            decisions_t = torch.tensor(decisions, dtype=torch.float32)
             # Forward pass and action selection.
             policy_logits, value = global_model(state_t, decisions_t)
             probs = torch.softmax(policy_logits, dim=1)
@@ -80,6 +83,7 @@ def worker(
                     action_counts[action_idx] += 1
 
             next_state, reward, done, _ = env.step(action_idx)
+            decision_history.append(action_idx)
 
             reward_t = torch.tensor([[reward]], dtype=torch.float32)
 
@@ -105,9 +109,10 @@ def worker(
             loss.backward()
             optimizer.step()
             
-            # Update the state.
+            # Update the state and history.
             if done or next_state is None:
                 state = env.reset()
+                decision_history = deque([0] * 16, maxlen=16)
                 returns[:] = 0
             else:
                 state = next_state
