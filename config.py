@@ -9,8 +9,7 @@ import torch
 
 class TradingConfig:
     GRANULARITY = "H1"
-    # CANDLE_COUNT = 5000
-    CANDLE_COUNT = 136
+    CANDLE_COUNT = 5000
 
 try:
     from local_config import (
