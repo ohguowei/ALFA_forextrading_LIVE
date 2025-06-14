@@ -36,8 +36,8 @@ def main():
         set_global_seed(seed)
 
     # Set training parameters for the weekend training script.
-    num_workers = 200       # Use 100 worker threads.
-    train_steps = 121      # Each worker runs 121 training steps.
+    num_workers = 2       # Use 100 worker threads.
+    train_steps = 5000      # Each worker runs 121 training steps.
 
     os.makedirs(MODEL_DIR, exist_ok=True)
 
@@ -102,4 +102,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    send_telegram_message("Weekend training cycle completed.")
+    #send_telegram_message("Weekend training cycle completed.")

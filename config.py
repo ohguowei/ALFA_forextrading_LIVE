@@ -53,70 +53,70 @@ CURRENCY_CONFIGS = {
      #   access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
      #   environment="live"
      ),
-     "AUD_USD": CurrencyConfig(
-         instrument="AUD_USD",
-       # live_units=1589,
-         live_units=1000,
-         simulated_units=1000,
-         spread=0.0003,
-        account_id=DEFAULT_ACCOUNT_ID,
-        access_token=DEFAULT_ACCESS_TOKEN,
-        environment=DEFAULT_ENVIRONMENT
-      #   account_id="001-003-255162-003",
-      #   access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
-      #   environment="live"
-     ),
-     "EUR_AUD": CurrencyConfig(
-         instrument="EUR_AUD",
-         #live_units=945,
-         live_units=1000,
-         simulated_units=1000,
-         spread=0.0004,
-        account_id=DEFAULT_ACCOUNT_ID,
-        access_token=DEFAULT_ACCESS_TOKEN,
-        environment=DEFAULT_ENVIRONMENT
-     #    account_id="001-003-255162-003",
-     #    access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
-     #    environment="live"
-     ),     
-     "GBP_USD": CurrencyConfig(
-         instrument="GBP_USD",
-         live_units=1000,
-         simulated_units=1000,
-         spread=0.0002,
-        account_id=DEFAULT_ACCOUNT_ID,
-        access_token=DEFAULT_ACCESS_TOKEN,
-        environment=DEFAULT_ENVIRONMENT
+    #  "AUD_USD": CurrencyConfig(
+    #      instrument="AUD_USD",
+    #    # live_units=1589,
+    #      live_units=1000,
+    #      simulated_units=1000,
+    #      spread=0.0003,
+    #     account_id=DEFAULT_ACCOUNT_ID,
+    #     access_token=DEFAULT_ACCESS_TOKEN,
+    #     environment=DEFAULT_ENVIRONMENT
+    #   #   account_id="001-003-255162-003",
+    #   #   access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
+    #   #   environment="live"
+    #  ),
+    #  "EUR_AUD": CurrencyConfig(
+    #      instrument="EUR_AUD",
+    #      #live_units=945,
+    #      live_units=1000,
+    #      simulated_units=1000,
+    #      spread=0.0004,
+    #     account_id=DEFAULT_ACCOUNT_ID,
+    #     access_token=DEFAULT_ACCESS_TOKEN,
+    #     environment=DEFAULT_ENVIRONMENT
+    #  #    account_id="001-003-255162-003",
+    #  #    access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
+    #  #    environment="live"
+    #  ),     
+    #  "GBP_USD": CurrencyConfig(
+    #      instrument="GBP_USD",
+    #      live_units=1000,
+    #      simulated_units=1000,
+    #      spread=0.0002,
+    #     account_id=DEFAULT_ACCOUNT_ID,
+    #     access_token=DEFAULT_ACCESS_TOKEN,
+    #     environment=DEFAULT_ENVIRONMENT
         
-    #    #account_id="001-003-255162-002",
-    #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
-    #    #environment="live"
-     ),
-     "GBP_AUD": CurrencyConfig(
-         instrument="GBP_AUD",
-         live_units=1000,
-         simulated_units=1000,
-         spread=0.00055,
-        account_id=DEFAULT_ACCOUNT_ID,
-        access_token=DEFAULT_ACCESS_TOKEN,
-        environment=DEFAULT_ENVIRONMENT
+    # #    #account_id="001-003-255162-002",
+    # #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
+    # #    #environment="live"
+    #  ),
+    #  "GBP_AUD": CurrencyConfig(
+    #      instrument="GBP_AUD",
+    #      live_units=1000,
+    #      simulated_units=1000,
+    #      spread=0.00055,
+    #     account_id=DEFAULT_ACCOUNT_ID,
+    #     access_token=DEFAULT_ACCESS_TOKEN,
+    #     environment=DEFAULT_ENVIRONMENT
         
-    #    #account_id="001-003-255162-002",
-    #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
-    #    #environment="live"
-     ),
-     "EUR_GBP": CurrencyConfig(
-         instrument="EUR_GBP",
-         live_units=1000,
-         simulated_units=1000,
-         spread=0.00015,
-        account_id=DEFAULT_ACCOUNT_ID,
-        access_token=DEFAULT_ACCESS_TOKEN,
-        environment=DEFAULT_ENVIRONMENT
+    # #    #account_id="001-003-255162-002",
+    # #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
+    # #    #environment="live"
+    #  ),
+    #  "EUR_GBP": CurrencyConfig(
+    #      instrument="EUR_GBP",
+    #      live_units=1000,
+    #      simulated_units=1000,
+    #      spread=0.00015,
+    #     account_id=DEFAULT_ACCOUNT_ID,
+    #     access_token=DEFAULT_ACCESS_TOKEN,
+    #     environment=DEFAULT_ENVIRONMENT
         
-    #    #account_id="001-003-255162-002",
-    #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
-    #    #environment="live"
-     ),    
+    # #    #account_id="001-003-255162-002",
+    # #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
+    # #    #environment="live"
+    #  ),    
     # # Add more currencies as needed...
 }
