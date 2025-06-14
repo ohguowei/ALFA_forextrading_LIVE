@@ -105,20 +105,35 @@ def run_training_cycle(models, num_workers, train_steps, training_label):
         model = models[currency]
         optimizer = optim.Adam(model.parameters(), lr=0.00004)
         barrier = threading.Barrier(num_workers + 1)
-        
+        action_counts = [0, 0, 0]
+        action_lock = threading.Lock()
+
         workers = []
         for i in range(num_workers):
             t = threading.Thread(
                 target=worker,
                 args=(i, model, optimizer, train_steps, currency_config, barrier),
+                kwargs={
+                    "action_counts": action_counts,
+                    "action_lock": action_lock,
+                },
                 daemon=True
             )
             workers.append(t)
             t.start()
-        
+
         barrier.wait()
         for t in workers:
             t.join()
+        total_actions = sum(action_counts)
+        if total_actions:
+            dist = [c / total_actions for c in action_counts]
+            print(
+                "Training action distribution: "
+                f"long {dist[0]*100:.1f}%, "
+                f"short {dist[1]*100:.1f}%, "
+                f"neutral {dist[2]*100:.1f}%"
+            )
         torch.save(model.state_dict(), os.path.join(MODEL_DIR, f"{currency}.pt"))
         print(f"--- Finished {training_label} Training cycle for {currency} ---")
 

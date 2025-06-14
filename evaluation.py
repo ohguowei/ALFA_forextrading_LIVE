@@ -52,6 +52,9 @@ def evaluate_model(
 
             state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
 
+        if env.position_open:
+            env.simulated_close_position()
+
         total_reward += episode_reward
         profits.extend(t.profit for t in env.trade_log)
         total_trades += len(env.trade_log)
