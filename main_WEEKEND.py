@@ -17,11 +17,17 @@ from evaluation import evaluate_model, feature_importance
 MODEL_DIR = "./models/"
 
 def main():
+    """Run a weekend training cycle for all configured currencies."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--seed",
         type=int,
         help="Random seed for reproducibility",
+    )
+    parser.add_argument(
+        "--train-steps",
+        type=int,
+        help="Training steps each worker should run",
     )
     args = parser.parse_args()
     seed = args.seed
@@ -36,8 +42,17 @@ def main():
         set_global_seed(seed)
 
     # Set training parameters for the weekend training script.
-    num_workers = 200       # Use 100 worker threads.
-    train_steps = 121      # Each worker runs 121 training steps.
+    num_workers = 200       # Use multiple worker threads.
+    train_steps = args.train_steps
+    if train_steps is None:
+        env_steps = os.getenv("TRAIN_STEPS")
+        if env_steps is not None:
+            try:
+                train_steps = int(env_steps)
+            except ValueError:
+                train_steps = None
+    if train_steps is None:
+        train_steps = 121
 
     os.makedirs(MODEL_DIR, exist_ok=True)
 
