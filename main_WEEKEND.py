@@ -42,11 +42,7 @@ def main():
         set_global_seed(seed)
 
     # Set training parameters for the weekend training script.
-<<<<<<< HEAD
-    num_workers = 2       # Use 100 worker threads.
-    train_steps = 5000      # Each worker runs 121 training steps.
-=======
-    num_workers = 200       # Use multiple worker threads.
+    num_workers = 1       # Use multiple worker threads.
     train_steps = args.train_steps
     if train_steps is None:
         env_steps = os.getenv("TRAIN_STEPS")
@@ -56,8 +52,7 @@ def main():
             except ValueError:
                 train_steps = None
     if train_steps is None:
-        train_steps = 121
->>>>>>> e39087cd5ed2d97cc19463f5db4512eb23b2fef2
+        train_steps = 5000
 
     os.makedirs(MODEL_DIR, exist_ok=True)
 
