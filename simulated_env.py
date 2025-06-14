@@ -3,6 +3,7 @@ import numpy as np
 from oanda_api import fetch_candle_data
 from feature_extractor import compute_features
 from config import TradingConfig
+from normalization import RunningStandardScaler
 
 class Trade:
     """
@@ -37,6 +38,8 @@ class SimulatedOandaForexEnv:
         # Fetch initial historical data and compute features.
         self.data = self._fetch_initial_data()  # Expecting each candle to have 6 values: [o, h, l, c, volume, spread]
         self.features = compute_features(self.data)  # Returns a (n, 6) array
+        self.scaler = RunningStandardScaler(self.features.shape[1])
+        self.scaler.update(self.features)
         self.current_index = 16
 
         self.position_open = False
@@ -85,7 +88,9 @@ class SimulatedOandaForexEnv:
         self.trade_log = []
         self.just_closed_profit = None
 
-        base_features = self.features[self.current_index - 16 : self.current_index]  # Shape: (16, 6)
+        self.scaler.update(self.features)
+        base_features = self.features[self.current_index - 16 : self.current_index]
+        base_features = self.scaler.normalize(base_features)
         current_pl = 0.0
         pl_column = np.full((base_features.shape[0], 1), current_pl)  # Shape: (16, 1)
         state_with_pl = np.hstack((base_features, pl_column))  # Final shape: (16, 7)
@@ -105,6 +110,7 @@ class SimulatedOandaForexEnv:
             self.data = np.vstack((self.data, new_candle))
             new_features = compute_features(np.vstack((self.data[-2:],)))
             self.features = np.vstack((self.features, new_features))
+            self.scaler.update(new_features)
             self.current_index += 1
         except Exception as e:
             print(f"Error updating live data: {e}")
@@ -120,14 +126,16 @@ class SimulatedOandaForexEnv:
         if self.just_closed_profit is not None:
             reward = self.just_closed_profit
             self.just_closed_profit = None
-            return reward
+            return float(np.clip(reward, -1.0, 1.0))
 
         if self.position_open:
             current_price = self.data[self.current_index][3]
             if self.position_side == "long":
-                return (current_price - self.entry_price) / self.entry_price
+                reward = (current_price - self.entry_price) / self.entry_price
+                return float(np.clip(reward, -1.0, 1.0))
             else:
-                return (self.entry_price - current_price) / self.entry_price
+                reward = (self.entry_price - current_price) / self.entry_price
+                return float(np.clip(reward, -1.0, 1.0))
 
         return 0.0
 
@@ -201,6 +209,7 @@ class SimulatedOandaForexEnv:
             return None, reward, done, {}
 
         next_features = self.features[self.current_index - 16 : self.current_index]
+        next_features = self.scaler.normalize(next_features)
         if self.position_open:
             current_price = self.data[self.current_index][3]
             if self.position_side == "long":
