@@ -16,8 +16,34 @@ def worker(
     barrier=None,
     gamma: float = 0.99,
     accumulate_returns: bool = False,
+    action_counts=None,
+    action_lock=None,
 ):
-    """Run a training loop on a simulated environment."""
+    """Run a training loop on a simulated environment.
+
+    Parameters
+    ----------
+    worker_id : int
+        Identifier for the worker thread.
+    global_model : ActorCritic
+        Shared model updated by all workers.
+    optimizer : torch.optim.Optimizer
+        Optimizer used to update ``global_model``.
+    max_steps : int, optional
+        Number of steps to run in this training cycle.
+    currency_config : CurrencyConfig
+        Configuration object for the currency pair.
+    barrier : threading.Barrier
+        Barrier used to synchronize workers at the end.
+    gamma : float, optional
+        Discount factor for returns.
+    accumulate_returns : bool, optional
+        If ``True``, use accumulated returns.
+    action_counts : list of int, optional
+        Shared list counting how often each action is taken.
+    action_lock : threading.Lock, optional
+        Lock guarding ``action_counts`` updates.
+    """
     if currency_config is None:
         raise ValueError("Currency config is required for worker")
     if barrier is None:
@@ -45,6 +71,13 @@ def worker(
             probs = torch.softmax(policy_logits, dim=1)
             action = torch.multinomial(probs, num_samples=1)
             action_idx = action.item()
+
+            if action_counts is not None:
+                if action_lock is not None:
+                    with action_lock:
+                        action_counts[action_idx] += 1
+                else:
+                    action_counts[action_idx] += 1
 
             next_state, reward, done, _ = env.step(action_idx)
 
