@@ -9,7 +9,7 @@ from tg_bot import send_telegram_message
 from models import ActorCritic
 from worker import worker
 from config import CURRENCY_CONFIGS, set_global_seed
-from evaluation import evaluate_model
+from evaluation import evaluate_model, feature_importance
 
 
 
@@ -98,6 +98,7 @@ def main():
 
         # Evaluate the trained model on a simulated environment
         evaluate_model(model, currency_config)
+        feature_importance(model, currency_config)
 
 if __name__ == "__main__":
     main()

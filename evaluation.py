@@ -99,6 +99,67 @@ def evaluate_model(
     return avg_reward, avg_profit, win_rate
 
 
+def feature_importance(model: ActorCritic, currency_config, episodes: int = 3):
+    """Return normalized input feature importances for a trained model.
+
+    Runs ``episodes`` episodes in a :class:`SimulatedOandaForexEnv` and
+    greedily selects actions from the policy. For each step the gradient of the
+    selected action's logit with respect to the input state is computed. The
+    absolute gradients are accumulated and averaged across all steps and
+    episodes. The resulting importances for the seven input features are
+    normalized to sum to one.
+    """
+
+    env = SimulatedOandaForexEnv(
+        currency_config,
+        candle_count=5000,
+        granularity=TradingConfig.GRANULARITY,
+    )
+
+    model.eval()
+    importance = torch.zeros(7)
+    step_count = 0
+
+    for _ in range(episodes):
+        state = torch.tensor(env.reset(), dtype=torch.float32).unsqueeze(0)
+        decisions = torch.zeros((1, 16), dtype=torch.float32)
+        done = False
+
+        while not done:
+            state.requires_grad_(True)
+            logits, _ = model(state, decisions)
+            action = torch.argmax(logits, dim=1)
+            logit = logits[0, action]
+
+            model.zero_grad()
+            if state.grad is not None:
+                state.grad.zero_()
+            logit.backward()
+
+            grad = state.grad.detach().abs().sum(dim=1).squeeze(0)
+            importance += grad
+            step_count += 1
+
+            next_state, _, done, _ = env.step(action.item())
+            if done or next_state is None:
+                break
+            state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
+
+        if env.position_open:
+            env.simulated_close_position()
+
+    if step_count > 0:
+        importance /= step_count
+        importance /= importance.sum() if importance.sum() != 0 else 1.0
+
+    print(
+        "Feature importance:",
+        ", ".join(f"f{i+1}:{imp:.3f}" for i, imp in enumerate(importance)),
+    )
+
+    return importance
+
+
 def models_are_equal(path_a: str, path_b: str) -> bool:
     """Return True if two saved ActorCritic models have identical parameters."""
     model_a = ActorCritic()
