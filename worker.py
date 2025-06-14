@@ -89,6 +89,7 @@ def worker(
 
                 next_state, reward, done, _ = env.step(action_idx)
                 decision_history.append(action_idx)
+                decisions_next = encode_decision_history(decision_history)
 
                 reward_t = torch.tensor([[reward]], dtype=torch.float32)
 
@@ -99,7 +100,9 @@ def worker(
                         next_state, dtype=torch.float32
                     ).unsqueeze(0)
                     with torch.no_grad():
-                        _, next_value = global_model(next_state_t, decisions_t)
+                        _, next_value = global_model(
+                            next_state_t, decisions_next
+                        )
 
                 if accumulate_returns:
                     returns[:] = reward_t + gamma * returns
