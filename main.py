@@ -12,6 +12,7 @@ from models import ActorCritic
 from worker import worker
 from live_env import LiveOandaForexEnv
 from config import TradingConfig, CURRENCY_CONFIGS, set_global_seed
+from evaluation import evaluate_model, models_are_equal
 
 
 def summarize_trade_log(trades):
