@@ -1,6 +1,7 @@
 import time
 import numpy as np
 from feature_extractor import compute_features
+from normalization import RunningStandardScaler
 
 from oanda_api import (
     fetch_candle_data,
@@ -46,6 +47,8 @@ class LiveOandaForexEnv:
         # Fetch initial data and compute features
         self.data = self._fetch_initial_data()
         self.features = compute_features(self.data)
+        self.scaler = RunningStandardScaler(self.features.shape[1])
+        self.scaler.update(self.features)
         self.current_index = 16
 
         # Trade state variables
@@ -117,8 +120,10 @@ class LiveOandaForexEnv:
         
         self.data = self._fetch_initial_data()
         self.features = compute_features(self.data)  # Updated call.
-        
+        self.scaler.update(self.features)
+
         initial_features = self.features[self.current_index - 16 : self.current_index]
+        initial_features = self.scaler.normalize(initial_features)
         current_pl = 0.0
         pl_column = np.full((initial_features.shape[0], 1), current_pl)
         initial_state = np.hstack((initial_features, pl_column))
@@ -140,6 +145,7 @@ class LiveOandaForexEnv:
             self.data = np.vstack((self.data, new_candle))
             new_features = compute_features(np.vstack((self.data[-2:],)))
             self.features = np.vstack((self.features, new_features))
+            self.scaler.update(new_features)
             self.current_index += 1
         except Exception as e:
             print(f"Error updating live data: {e}")
@@ -239,15 +245,17 @@ class LiveOandaForexEnv:
         if self.just_closed_profit is not None:
             reward = self.just_closed_profit
             self.just_closed_profit = None
-            return reward
+            return float(np.clip(reward, -1.0, 1.0))
         
         # 2) If a position is still open, compute mark-to-market.
         if self.position_open:
             current_price = self.data[self.current_index][3]
             if self.position_side == "long":
-                return (current_price - self.entry_price) / self.entry_price
+                reward = (current_price - self.entry_price) / self.entry_price
+                return float(np.clip(reward, -1.0, 1.0))
             else:  # short
-                return (self.entry_price - current_price) / self.entry_price
+                reward = (self.entry_price - current_price) / self.entry_price
+                return float(np.clip(reward, -1.0, 1.0))
         
         # 3) No open position and no just-closed position => zero reward
         return 0.0
@@ -281,6 +289,7 @@ class LiveOandaForexEnv:
         
         # Prepare the next state: a sliding window of 16 rows of features (each originally 12 dimensions)
         next_features = self.features[self.current_index-16:self.current_index]
+        next_features = self.scaler.normalize(next_features)
         
         # Calculate the current P/L:
         if self.position_open:
