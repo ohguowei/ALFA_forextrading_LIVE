@@ -29,8 +29,14 @@ def main():
         type=int,
         help="Training steps each worker should run",
     )
+    parser.add_argument(
+        "--entropy-weight",
+        type=float,
+        help="Entropy regularization weight",
+    )
     args = parser.parse_args()
     seed = args.seed
+    entropy_weight = args.entropy_weight
     if seed is None:
         env_seed = os.getenv("SEED")
         if env_seed is not None:
@@ -40,6 +46,16 @@ def main():
                 seed = None
     if seed is not None:
         set_global_seed(seed)
+
+    if entropy_weight is None:
+        env_entropy = os.getenv("ENTROPY_WEIGHT")
+        if env_entropy is not None:
+            try:
+                entropy_weight = float(env_entropy)
+            except ValueError:
+                entropy_weight = None
+    if entropy_weight is None:
+        entropy_weight = 0.01
 
     # Set training parameters for the weekend training script.
     num_workers = 1       # Use multiple worker threads.
@@ -101,7 +117,7 @@ def main():
                     "action_counts": action_counts,
                     "action_lock": action_lock,
                     "model_lock": model_lock,
-                    "entropy_weight": 0.01,
+                    "entropy_weight": entropy_weight,
                 },
                 daemon=True
             )
