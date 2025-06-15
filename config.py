@@ -10,6 +10,9 @@ import torch
 class TradingConfig:
     GRANULARITY = "H1"
     CANDLE_COUNT = 5000
+    # Factor applied to raw profit when computing rewards. This helps
+    # emphasize profitable trades relative to the neutral action.
+    REWARD_SCALE = 5.0
 
 try:
     from local_config import (

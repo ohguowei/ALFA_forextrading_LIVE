@@ -124,17 +124,21 @@ class SimulatedOandaForexEnv:
         3) Otherwise return 0.
         """
         if self.just_closed_profit is not None:
-            reward = self.just_closed_profit
+            reward = self.just_closed_profit * TradingConfig.REWARD_SCALE
             self.just_closed_profit = None
             return float(np.clip(reward, -1.0, 1.0))
 
         if self.position_open:
             current_price = self.data[self.current_index][3]
             if self.position_side == "long":
-                reward = (current_price - self.entry_price) / self.entry_price
+                reward = (
+                    (current_price - self.entry_price) / self.entry_price
+                ) * TradingConfig.REWARD_SCALE
                 return float(np.clip(reward, -1.0, 1.0))
             else:
-                reward = (self.entry_price - current_price) / self.entry_price
+                reward = (
+                    (self.entry_price - current_price) / self.entry_price
+                ) * TradingConfig.REWARD_SCALE
                 return float(np.clip(reward, -1.0, 1.0))
 
         return 0.0
