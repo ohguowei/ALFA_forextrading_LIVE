@@ -245,7 +245,13 @@ class LiveOandaForexEnv:
         if self.just_closed_profit is not None:
             reward = self.just_closed_profit * TradingConfig.REWARD_SCALE
             self.just_closed_profit = None
-            return float(np.clip(reward, -1.0, 1.0))
+            return float(
+                np.clip(
+                    reward,
+                    TradingConfig.REWARD_CLIP_LOW,
+                    TradingConfig.REWARD_CLIP_HIGH,
+                )
+            )
         
         # 2) If a position is still open, compute mark-to-market.
         if self.position_open:
@@ -254,12 +260,24 @@ class LiveOandaForexEnv:
                 reward = (
                     (current_price - self.entry_price) / self.entry_price
                 ) * TradingConfig.REWARD_SCALE
-                return float(np.clip(reward, -1.0, 1.0))
+                return float(
+                    np.clip(
+                        reward,
+                        TradingConfig.REWARD_CLIP_LOW,
+                        TradingConfig.REWARD_CLIP_HIGH,
+                    )
+                )
             else:  # short
                 reward = (
                     (self.entry_price - current_price) / self.entry_price
                 ) * TradingConfig.REWARD_SCALE
-                return float(np.clip(reward, -1.0, 1.0))
+                return float(
+                    np.clip(
+                        reward,
+                        TradingConfig.REWARD_CLIP_LOW,
+                        TradingConfig.REWARD_CLIP_HIGH,
+                    )
+                )
         
         # 3) No open position and no just-closed position => zero reward
         return 0.0

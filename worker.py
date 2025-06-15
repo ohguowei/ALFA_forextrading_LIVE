@@ -147,7 +147,13 @@ def worker(
     if env.position_open:
         profit = env.simulated_close_position()
         if profit is not None:
-            final_reward = float(np.clip(profit, -1.0, 1.0))
+            final_reward = float(
+                np.clip(
+                    profit,
+                    TradingConfig.REWARD_CLIP_LOW,
+                    TradingConfig.REWARD_CLIP_HIGH,
+                )
+            )
             decisions_t = encode_decision_history(decision_history)
             reward_t = torch.tensor([[final_reward]], dtype=torch.float32)
             with model_lock:

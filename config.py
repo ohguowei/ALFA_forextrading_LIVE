@@ -12,7 +12,11 @@ class TradingConfig:
     CANDLE_COUNT = 5000
     # Factor applied to raw profit when computing rewards. This helps
     # emphasize profitable trades relative to the neutral action.
-    REWARD_SCALE = 5.0
+    REWARD_SCALE = 10.0
+    # Minimum reward value after clipping
+    REWARD_CLIP_LOW = -2.0
+    # Maximum reward value after clipping
+    REWARD_CLIP_HIGH = 2.0
 
 try:
     from local_config import (
