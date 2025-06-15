@@ -112,7 +112,7 @@ def feature_importance(model: ActorCritic, currency_config, episodes: int = 3):
     greedily selects actions from the policy. For each step the gradient of the
     selected action's logit with respect to the input state is computed. The
     absolute gradients are accumulated and averaged across all steps and
-    episodes. The resulting importances for the seven input features are
+    episodes. The resulting importances for the eight input features are
     normalized to sum to one.
     """
 
@@ -123,7 +123,7 @@ def feature_importance(model: ActorCritic, currency_config, episodes: int = 3):
     )
 
     model.eval()
-    importance = torch.zeros(7)
+    importance = torch.zeros(8)
     step_count = 0
 
     for _ in range(episodes):
