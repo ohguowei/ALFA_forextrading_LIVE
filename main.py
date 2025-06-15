@@ -82,7 +82,7 @@ def trade_live(currency_model, live_env, num_steps=10):
         with torch.no_grad():
             policy_logits, _ = currency_model(state, decisions)
             probs = torch.softmax(policy_logits, dim=1)
-            action = torch.multinomial(probs, num_samples=1).item()
+            action = torch.argmax(probs, dim=1).item()
         print(f"[Trading] Step {step}, Action: {action}")
         next_state, reward, done, _ = live_env.step(action)
         decision_history.append(action)
