@@ -132,6 +132,7 @@ def run_training_cycle(models, num_workers, train_steps, training_label):
                     "action_lock": action_lock,
                     "model_lock": model_lock,
                     "accumulate_returns": True,
+                    "entropy_weight": 0.01,
                 },
                 daemon=True
             )

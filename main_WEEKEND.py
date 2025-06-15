@@ -95,6 +95,7 @@ def main():
                     "action_counts": action_counts,
                     "action_lock": action_lock,
                     "model_lock": model_lock,
+                    "entropy_weight": 0.01,
                 },
                 daemon=True
             )
