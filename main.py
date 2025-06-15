@@ -11,7 +11,7 @@ from collections import deque
 from preprocessing import encode_decision_history
 
 import tg_bot  # Contains Telegram bot logic and global "last_trade_status"
-from models import ActorCritic
+from models import ActorCritic, load_checkpoint
 from worker import worker
 from live_env import LiveOandaForexEnv
 from config import TradingConfig, CURRENCY_CONFIGS, set_global_seed
@@ -180,7 +180,7 @@ def trading_loop(train_steps_full=121):
         currency_model = ActorCritic()
         if os.path.exists(model_path):
             try:
-                currency_model.load_state_dict(torch.load(model_path))
+                load_checkpoint(currency_model, model_path)
                 print(f"Loaded existing model for {currency}.")
             except Exception as e:
                 print(
@@ -217,7 +217,7 @@ def trading_loop(train_steps_full=121):
                     model_path = os.path.join(MODEL_DIR, f"{currency}.pt")
                     if os.path.exists(model_path):
                         try:
-                            models[currency].load_state_dict(torch.load(model_path))
+                            load_checkpoint(models[currency], model_path)
                             print(f"Reloaded latest model for {currency}.")
                         except Exception as e:
                             print(
