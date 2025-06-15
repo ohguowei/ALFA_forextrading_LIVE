@@ -22,6 +22,7 @@ def worker(
     action_counts=None,
     action_lock=None,
     model_lock=None,
+    entropy_weight: float = 0.01,
 ):
     """Run a training loop on a simulated environment.
 
@@ -49,6 +50,8 @@ def worker(
         Lock guarding ``action_counts`` updates.
     model_lock : threading.Lock, optional
         Lock guarding updates to ``global_model``.
+    entropy_weight : float, optional
+        Weight for policy entropy regularization. Defaults to ``0.01``.
     """
     if currency_config is None:
         raise ValueError("Currency config is required for worker")
@@ -110,12 +113,11 @@ def worker(
                 else:
                     advantage = reward_t + gamma * next_value - value
 
-                policy_loss = (
-                    -torch.log(probs[0, action_idx] + 1e-8)
-                    * advantage.detach()
-                )
+                log_probs = torch.log(probs + 1e-8)
+                policy_loss = -log_probs[0, action_idx] * advantage.detach()
                 value_loss = advantage.pow(2)
-                loss = policy_loss + value_loss
+                entropy = -(probs * log_probs).sum()
+                loss = policy_loss + value_loss - entropy_weight * entropy
 
                 optimizer.zero_grad()
                 loss.backward()
