@@ -101,10 +101,22 @@ def trade_live(currency_model, live_env, num_steps=10):
     else:
         tg_bot.last_trade_status = "No trades executed."
 
-def run_training_cycle(models, num_workers, train_steps, training_label):
-    """
-    Runs a training cycle over all currencies.
-    This function is intended to be run in a separate process.
+def run_training_cycle(models, num_workers, train_steps, training_label,
+                       entropy_weight=0.01):
+    """Run a training cycle over all currencies.
+
+    Parameters
+    ----------
+    models : dict
+        Mapping of currency codes to shared models.
+    num_workers : int
+        Number of worker threads to launch.
+    train_steps : int
+        Training steps per worker.
+    training_label : str
+        Label printed in logging messages.
+    entropy_weight : float, optional
+        Weight for policy entropy regularization.
     """
     for currency, currency_config in CURRENCY_CONFIGS.items():
         print(f"\n--- {training_label} Training cycle for {currency} ---")
@@ -132,7 +144,7 @@ def run_training_cycle(models, num_workers, train_steps, training_label):
                     "action_lock": action_lock,
                     "model_lock": model_lock,
                     "accumulate_returns": True,
-                    "entropy_weight": 0.01,
+                    "entropy_weight": entropy_weight,
                 },
                 daemon=True
             )
@@ -154,7 +166,8 @@ def run_training_cycle(models, num_workers, train_steps, training_label):
         torch.save(model.state_dict(), os.path.join(MODEL_DIR, f"{currency}.pt"))
         print(f"--- Finished {training_label} Training cycle for {currency} ---")
 
-def training_process(models, num_workers_full, train_steps_full):
+def training_process(models, num_workers_full, train_steps_full,
+                     entropy_weight):
     """Launch a full training cycle in a lower priority process."""
     try:
         # Increase niceness by 10 to lower priority (macOS uses os.nice)
@@ -162,10 +175,19 @@ def training_process(models, num_workers_full, train_steps_full):
         print("Training process niceness increased; lower CPU priority assigned.")
     except Exception as e:
         print("Error setting process niceness:", e)
-    run_training_cycle(models, num_workers_full, train_steps_full, "FULL")
+    run_training_cycle(models, num_workers_full, train_steps_full, "FULL",
+                       entropy_weight)
 
-def trading_loop(train_steps_full=121):
-    """Main trading loop coordinating training and live trading."""
+def trading_loop(train_steps_full=121, entropy_weight=0.01):
+    """Main trading loop coordinating training and live trading.
+
+    Parameters
+    ----------
+    train_steps_full : int, optional
+        Training steps for each worker during full cycles.
+    entropy_weight : float, optional
+        Weight for policy entropy regularization.
+    """
     # Full training (60-minute) settings.
     num_workers_full = 100      # 100 workers
 
@@ -204,8 +226,9 @@ def trading_loop(train_steps_full=121):
                 print(f"\n=== Trigger at {next_trigger.strftime('%H:%M:%S')}: Launching FULL TRAINING cycle in a separate process ===")
                 p = multiprocessing.Process(
                     target=training_process,
-                    args=(models, num_workers_full, train_steps_full),
-                    daemon=True
+                    args=(models, num_workers_full, train_steps_full,
+                          entropy_weight),
+                daemon=True
                 )
                 p.start()
 
@@ -259,8 +282,14 @@ if __name__ == "__main__":
         type=int,
         help="Training steps for each worker during full training",
     )
+    parser.add_argument(
+        "--entropy-weight",
+        type=float,
+        help="Entropy regularization weight",
+    )
     args, _ = parser.parse_known_args()
     seed = args.seed
+    entropy_weight = args.entropy_weight
     if seed is None:
         env_seed = os.getenv("SEED")
         if env_seed is not None:
@@ -270,6 +299,16 @@ if __name__ == "__main__":
                 seed = None
     if seed is not None:
         set_global_seed(seed)
+
+    if entropy_weight is None:
+        env_entropy = os.getenv("ENTROPY_WEIGHT")
+        if env_entropy is not None:
+            try:
+                entropy_weight = float(env_entropy)
+            except ValueError:
+                entropy_weight = None
+    if entropy_weight is None:
+        entropy_weight = 0.01
 
     train_steps_full = args.train_steps
     if train_steps_full is None:
@@ -285,7 +324,10 @@ if __name__ == "__main__":
     # Start the trading loop in a background thread.
     trading_thread = threading.Thread(
         target=trading_loop,
-        kwargs={"train_steps_full": train_steps_full},
+        kwargs={
+            "train_steps_full": train_steps_full,
+            "entropy_weight": entropy_weight,
+        },
         daemon=True,
     )
     trading_thread.start()
