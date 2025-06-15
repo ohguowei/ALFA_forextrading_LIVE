@@ -6,7 +6,7 @@ import torch.optim as optim
 
 from tg_bot import send_telegram_message
 
-from models import ActorCritic
+from models import ActorCritic, load_checkpoint
 from worker import worker
 from config import CURRENCY_CONFIGS, set_global_seed
 from evaluation import evaluate_model, feature_importance
@@ -62,8 +62,14 @@ def main():
         model_path = os.path.join(MODEL_DIR, f"{currency}.pt")
         currency_model = ActorCritic()
         if os.path.exists(model_path):
-            currency_model.load_state_dict(torch.load(model_path))
-            print(f"Loaded existing model for {currency}.")
+            try:
+                load_checkpoint(currency_model, model_path)
+                print(f"Loaded existing model for {currency}.")
+            except Exception as e:
+                print(
+                    f"Failed to load model for {currency}: {e}. "
+                    "Initializing a new model instead."
+                )
         else:
             print(f"Initializing new model for {currency}.")
         currency_model.share_memory()

@@ -52,5 +52,32 @@ class ActorCritic(nn.Module):
         y = F.relu(self.critic_fc2(y))
         y = F.relu(self.critic_fc3(y))
         value = self.critic_output(y)
-        
+
         return policy_logits, value
+
+
+def load_checkpoint(model: nn.Module, path: str) -> None:
+    """Load a checkpoint into ``model`` handling minor shape mismatches."""
+    state = torch.load(path)
+    model_state = model.state_dict()
+    patched_state = {}
+    for name, param in state.items():
+        if name not in model_state:
+            continue
+        if param.shape == model_state[name].shape:
+            patched_state[name] = param
+        elif (
+            name.endswith("weight_ih_l0")
+            and param.shape[0] == model_state[name].shape[0]
+            and param.shape[1] + 1 == model_state[name].shape[1]
+        ):
+            new_param = torch.zeros_like(model_state[name])
+            new_param[:, : param.shape[1]] = param
+            patched_state[name] = new_param
+        else:
+            print(
+                f"Skipping parameter {name}: {param.shape} vs "
+                f"{model_state[name].shape}"
+            )
+    model_state.update(patched_state)
+    model.load_state_dict(model_state)
