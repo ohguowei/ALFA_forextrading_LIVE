@@ -131,6 +131,7 @@ def run_training_cycle(models, num_workers, train_steps, training_label):
                     "action_counts": action_counts,
                     "action_lock": action_lock,
                     "model_lock": model_lock,
+                    "accumulate_returns": True,
                 },
                 daemon=True
             )

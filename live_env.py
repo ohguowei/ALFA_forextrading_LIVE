@@ -243,7 +243,7 @@ class LiveOandaForexEnv:
         """
         # 1) If a position was closed this step, immediately return that realized P&L.
         if self.just_closed_profit is not None:
-            reward = self.just_closed_profit
+            reward = self.just_closed_profit * TradingConfig.REWARD_SCALE
             self.just_closed_profit = None
             return float(np.clip(reward, -1.0, 1.0))
         
@@ -251,10 +251,14 @@ class LiveOandaForexEnv:
         if self.position_open:
             current_price = self.data[self.current_index][3]
             if self.position_side == "long":
-                reward = (current_price - self.entry_price) / self.entry_price
+                reward = (
+                    (current_price - self.entry_price) / self.entry_price
+                ) * TradingConfig.REWARD_SCALE
                 return float(np.clip(reward, -1.0, 1.0))
             else:  # short
-                reward = (self.entry_price - current_price) / self.entry_price
+                reward = (
+                    (self.entry_price - current_price) / self.entry_price
+                ) * TradingConfig.REWARD_SCALE
                 return float(np.clip(reward, -1.0, 1.0))
         
         # 3) No open position and no just-closed position => zero reward
