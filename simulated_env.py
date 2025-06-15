@@ -77,8 +77,8 @@ class SimulatedOandaForexEnv:
     def reset(self):
         """
         Reset the environment to its initial state.
-        Returns a state with shape (16, 7):
-          - 6 features from compute_features (x1–x6)
+        Returns a state with shape (16, 8):
+          - 7 features from compute_features (x1–x7)
           - 1 additional column for P/L (set to 0)
         """
         self.current_index = 16
@@ -93,7 +93,7 @@ class SimulatedOandaForexEnv:
         base_features = self.scaler.normalize(base_features)
         current_pl = 0.0
         pl_column = np.full((base_features.shape[0], 1), current_pl)  # Shape: (16, 1)
-        state_with_pl = np.hstack((base_features, pl_column))  # Final shape: (16, 7)
+        state_with_pl = np.hstack((base_features, pl_column))  # Final shape: (16, 8)
         return state_with_pl
 
     def update_live_data(self):
@@ -198,7 +198,7 @@ class SimulatedOandaForexEnv:
         """
         Execute one step in the simulated trading environment.
         Returns:
-          next_state: (16, 7) array,
+          next_state: (16, 8) array,
           reward: float,
           done: bool,
           info: dict

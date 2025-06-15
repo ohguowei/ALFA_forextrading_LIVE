@@ -309,7 +309,7 @@ class LiveOandaForexEnv:
         # Update live data (this updates self.data and self.features, and increments self.current_index)
         self.update_live_data()
         
-        # Prepare the next state: a sliding window of 16 rows of features (each originally 12 dimensions)
+        # Prepare the next state: a sliding window of 16 rows of features (each originally 7 dimensions)
         next_features = self.features[self.current_index-16:self.current_index]
         next_features = self.scaler.normalize(next_features)
         
@@ -328,7 +328,7 @@ class LiveOandaForexEnv:
         # Append the P/L as an extra feature column to each row in the sliding window
         # This creates a column with shape (16, 1) filled with current_pl.
         pl_column = np.full((next_features.shape[0], 1), current_pl)
-        # Concatenate horizontally to obtain an updated state with 13 features per timestep.
+        # Concatenate horizontally to obtain an updated state with 8 features per timestep.
         next_state = np.hstack((next_features, pl_column))
         
         done = False  # Live trading typically runs continuously

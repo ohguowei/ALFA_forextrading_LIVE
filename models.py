@@ -10,7 +10,7 @@ class ActorCritic(nn.Module):
 
     def __init__(
         self,
-        input_size: int = 7,
+        input_size: int = 8,
         decision_history_len: int = 16,
         hidden_size: int = 128,
         num_actions: int = 3,
