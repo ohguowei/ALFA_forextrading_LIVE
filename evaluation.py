@@ -5,7 +5,7 @@ from collections import deque
 from preprocessing import encode_decision_history
 
 from models import ActorCritic
-from simulated_env import SimulatedOandaForexEnv
+from live_env import LiveOandaForexEnv
 from config import TradingConfig
 
 
@@ -15,7 +15,8 @@ def evaluate_model(
     episodes: int = 3,
     candle_count: int = 5000,
 ) -> Tuple[float, float, float]:
-    """Evaluate a model in a simulated environment.
+
+    """Evaluate a model in a live environment.
 
     Runs ``episodes`` episodes using ``candle_count`` candles. Actions are chosen
     greedily from the policy. A detailed report including profit factor and
@@ -23,11 +24,12 @@ def evaluate_model(
 
     Returns average reward, average profit and win rate.
     """
-    env = SimulatedOandaForexEnv(
+    env = LiveOandaForexEnv(
         currency_config,
         candle_count=candle_count,
         granularity=TradingConfig.GRANULARITY,
     )
+    max_steps = candle_count - 16
 
     model.eval()
     total_reward = 0.0
@@ -40,26 +42,28 @@ def evaluate_model(
         decision_history = deque([2] * 16, maxlen=16)
         decisions = encode_decision_history(decision_history)
         episode_reward = 0.0
-        done = False
-        while not done:
+        steps = 0
+        while steps < max_steps:
             with torch.no_grad():
                 logits, _ = model(state, decisions)
                 probs = torch.softmax(logits, dim=1)
                 action = torch.argmax(probs, dim=1).item()
 
             action_counts[action] += 1
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, _done, _ = env.step(action)
             decision_history.append(action)
             decisions = encode_decision_history(decision_history)
             episode_reward += reward
 
-            if done or next_state is None:
+            steps += 1
+
+            if next_state is None:
                 break
 
             state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
 
         if env.position_open:
-            env.simulated_close_position()
+            env.live_close_position()
 
         total_reward += episode_reward
         profits.extend(t.profit for t in env.trade_log)
