@@ -23,6 +23,7 @@ def worker(
     action_lock=None,
     model_lock=None,
     entropy_weight: float = 0.01,
+    candle_count: int = TradingConfig.CANDLE_COUNT,
 ):
     """Run a training loop on a simulated environment.
 
@@ -52,6 +53,8 @@ def worker(
         Lock guarding updates to ``global_model``.
     entropy_weight : float, optional
         Weight for policy entropy regularization. Defaults to ``0.01``.
+    candle_count : int, optional
+        Number of historical candles to initialize the environment with.
     """
     if currency_config is None:
         raise ValueError("Currency config is required for worker")
@@ -62,8 +65,8 @@ def worker(
     # configuration.
     env = SimulatedOandaForexEnv(
         currency_config,
-        candle_count=TradingConfig.CANDLE_COUNT,
-        granularity=TradingConfig.GRANULARITY
+        candle_count=candle_count,
+        granularity=TradingConfig.GRANULARITY,
     )
     
     # Get the initial state and initialize decision history.
