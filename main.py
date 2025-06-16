@@ -102,7 +102,8 @@ def trade_live(currency_model, live_env, num_steps=10):
         tg_bot.last_trade_status = "No trades executed."
 
 def run_training_cycle(models, num_workers, train_steps, training_label,
-                       entropy_weight=0.01):
+                       entropy_weight=0.01,
+                       candle_count=TradingConfig.CANDLE_COUNT):
     """Run a training cycle over all currencies.
 
     Parameters
@@ -117,6 +118,8 @@ def run_training_cycle(models, num_workers, train_steps, training_label,
         Label printed in logging messages.
     entropy_weight : float, optional
         Weight for policy entropy regularization.
+    candle_count : int, optional
+        Number of candles to initialize the simulated environment with.
     """
     for currency, currency_config in CURRENCY_CONFIGS.items():
         print(f"\n--- {training_label} Training cycle for {currency} ---")
@@ -145,6 +148,7 @@ def run_training_cycle(models, num_workers, train_steps, training_label,
                     "model_lock": model_lock,
                     "accumulate_returns": True,
                     "entropy_weight": entropy_weight,
+                    "candle_count": candle_count,
                 },
                 daemon=True
             )
@@ -167,8 +171,22 @@ def run_training_cycle(models, num_workers, train_steps, training_label,
         print(f"--- Finished {training_label} Training cycle for {currency} ---")
 
 def training_process(models, num_workers_full, train_steps_full,
-                     entropy_weight):
-    """Launch a full training cycle in a lower priority process."""
+                     entropy_weight, candle_count):
+    """Launch a full training cycle in a lower priority process.
+
+    Parameters
+    ----------
+    models : dict
+        Mapping of currency codes to shared models.
+    num_workers_full : int
+        Number of worker processes to launch.
+    train_steps_full : int
+        Training steps per worker.
+    entropy_weight : float
+        Weight for policy entropy regularization.
+    candle_count : int
+        Number of candles to initialize the simulated environment with.
+    """
     try:
         # Increase niceness by 10 to lower priority (macOS uses os.nice)
         os.nice(10)
@@ -176,7 +194,7 @@ def training_process(models, num_workers_full, train_steps_full,
     except Exception as e:
         print("Error setting process niceness:", e)
     run_training_cycle(models, num_workers_full, train_steps_full, "FULL",
-                       entropy_weight)
+                       entropy_weight, candle_count)
 
 def trading_loop(train_steps_full=121, entropy_weight=0.01):
     """Main trading loop coordinating training and live trading.
@@ -192,6 +210,7 @@ def trading_loop(train_steps_full=121, entropy_weight=0.01):
     num_workers_full = 100      # 100 workers
 
     trade_steps = 1             # Trading steps per trading cycle
+    training_candle_count = 5000
 
     os.makedirs(MODEL_DIR, exist_ok=True)
     
@@ -227,7 +246,7 @@ def trading_loop(train_steps_full=121, entropy_weight=0.01):
                 p = multiprocessing.Process(
                     target=training_process,
                     args=(models, num_workers_full, train_steps_full,
-                          entropy_weight),
+                          entropy_weight, training_candle_count),
                 daemon=True
                 )
                 p.start()
