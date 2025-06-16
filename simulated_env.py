@@ -1,3 +1,4 @@
+import logging
 import time
 import numpy as np
 from oanda_api import fetch_candle_data
@@ -69,6 +70,10 @@ class SimulatedOandaForexEnv:
                 print(f"Attempt {attempts} - Error fetching initial data: {e}")
                 time.sleep(30)
         print("Max attempts reached. Using fallback data.")
+        logging.warning(
+            "Evaluation running with placeholder data after %d attempts",
+            max_attempts,
+        )
         # Fallback candle includes a spread value (defaulting to 0)
         fallback_candle = [1.0, 1.0, 1.0, 1.0, 0, 0]
         fallback_data = np.array([fallback_candle] * self.candle_count)
