@@ -54,30 +54,29 @@ class SimulatedOandaForexEnv:
         max_attempts = 5
         while attempts < max_attempts:
             try:
-                data = np.array(fetch_candle_data(
-                    self.instrument, 
-                    self.granularity, 
-                    self.candle_count, 
-                    access_token=self.access_token, 
-                    environment=self.environment
-                ))
+                data = np.array(
+                    fetch_candle_data(
+                        self.instrument,
+                        self.granularity,
+                        self.candle_count,
+                        access_token=self.access_token,
+                        environment=self.environment,
+                    )
+                )
                 if len(data) == 0:
                     raise ValueError("No data returned from OANDA API.")
-                print(f"Successfully fetched {len(data)} candles for {self.instrument}.")
+                print(
+                    f"Successfully fetched {len(data)} candles for {self.instrument}."
+                )
                 return data
             except Exception as e:
                 attempts += 1
                 print(f"Attempt {attempts} - Error fetching initial data: {e}")
                 time.sleep(30)
-        print("Max attempts reached. Using fallback data.")
-        logging.warning(
-            "Evaluation running with placeholder data after %d attempts",
-            max_attempts,
+
+        raise RuntimeError(
+            f"Failed to fetch initial data after {max_attempts} attempts"
         )
-        # Fallback candle includes a spread value (defaulting to 0)
-        fallback_candle = [1.0, 1.0, 1.0, 1.0, 0, 0]
-        fallback_data = np.array([fallback_candle] * self.candle_count)
-        return fallback_data
 
     def reset(self):
         """
