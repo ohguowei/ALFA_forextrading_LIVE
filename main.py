@@ -277,7 +277,7 @@ def trading_loop(train_steps_full=121, entropy_weight=0.01):
                     live_env = LiveOandaForexEnv(
                         currency_config,
                         candle_count=TradingConfig.CANDLE_COUNT,
-                        granularity=TradingConfig.GRANULARITY
+                        granularity=TradingConfig.TRADING_GRANULARITY
                     )
                     trade_live(model, live_env, num_steps=trade_steps)
                     print(f"--- Finished trading cycle for {currency} ---")

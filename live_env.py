@@ -32,7 +32,14 @@ class Trade:
         )
 
 class LiveOandaForexEnv:
-    def __init__(self, currency_config, candle_count=TradingConfig.CANDLE_COUNT, granularity=TradingConfig.GRANULARITY):
+    """Environment for live trading using OANDA data."""
+
+    def __init__(
+        self,
+        currency_config,
+        candle_count=TradingConfig.CANDLE_COUNT,
+        granularity=TradingConfig.TRADING_GRANULARITY,
+    ):
         self.account_id = currency_config.account_id
         self.access_token = currency_config.access_token
         self.environment = currency_config.environment
