@@ -5,7 +5,7 @@ from collections import deque
 from preprocessing import encode_decision_history
 
 from models import ActorCritic
-from live_env import LiveOandaForexEnv
+from simulated_env import SimulatedOandaForexEnv
 from config import TradingConfig
 
 
@@ -16,7 +16,7 @@ def evaluate_model(
     candle_count: int = 5000,
 ) -> Tuple[float, float, float]:
 
-    """Evaluate a model in a live environment.
+    """Evaluate a model in a simulated environment.
 
     Runs ``episodes`` episodes using ``candle_count`` candles. Actions are chosen
     greedily from the policy. A detailed report including profit factor and
@@ -24,7 +24,7 @@ def evaluate_model(
 
     Returns average reward, average profit and win rate.
     """
-    env = LiveOandaForexEnv(
+    env = SimulatedOandaForexEnv(
         currency_config,
         candle_count=candle_count,
         granularity=TradingConfig.GRANULARITY,
