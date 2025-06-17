@@ -8,7 +8,8 @@ import numpy as np
 import torch
 
 class TradingConfig:
-    GRANULARITY = "H1"
+    GRANULARITY = "H1"  # Used for training and evaluation
+    TRADING_GRANULARITY = "M1"  # Use minute data when trading live
     CANDLE_COUNT = 5000
     # Factor applied to raw profit when computing rewards. This helps
     # emphasize profitable trades relative to the neutral action.
