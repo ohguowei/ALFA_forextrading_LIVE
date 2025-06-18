@@ -3,6 +3,7 @@ from oandapyV20 import API
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.orders as orders
 import oandapyV20.endpoints.positions as positions
+import oandapyV20.endpoints.pricing as pricing
 
 def get_client(access_token, environment):
     return API(access_token=access_token, environment=environment)
@@ -105,3 +106,37 @@ def get_open_positions(account_id, access_token, environment):
     except Exception as e:
         print(f"Error retrieving open positions: {e}")
         return None
+
+
+def fetch_current_price(account_id, instrument, access_token, environment):
+    """Return the latest mid price for ``instrument``.
+
+    Parameters
+    ----------
+    account_id : str
+        OANDA account identifier.
+    instrument : str
+        Instrument symbol, e.g. ``"EUR_USD"``.
+    access_token : str
+        API access token.
+    environment : str
+        API environment, ``"practice"`` or ``"live"``.
+
+    Returns
+    -------
+    float
+        Mid price calculated from bid/ask.
+    """
+    if not access_token or not environment:
+        raise ValueError("Access token and environment must be provided")
+    client = get_client(access_token, environment)
+    params = {"instruments": instrument}
+    r = pricing.PricingInfo(accountID=account_id, params=params)
+    response = client.request(r)
+    prices = response.get("prices")
+    if not prices:
+        raise ValueError("No pricing data returned from OANDA API")
+    price = prices[0]
+    bid = float(price["bids"][0]["price"])
+    ask = float(price["asks"][0]["price"])
+    return (bid + ask) / 2
