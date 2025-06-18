@@ -5,6 +5,7 @@ from normalization import RunningStandardScaler
 
 from oanda_api import (
     fetch_candle_data,
+    fetch_current_price,
     open_position,
     close_position,
     get_open_positions
@@ -56,7 +57,7 @@ class LiveOandaForexEnv:
         self.features = compute_features(self.data)
         self.scaler = RunningStandardScaler(self.features.shape[1])
         self.scaler.update(self.features)
-        self.current_index = 16
+        self.current_index = len(self.features)
 
         # Trade state variables
         self.position_open = False
@@ -119,7 +120,7 @@ class LiveOandaForexEnv:
             raise
     
     def reset(self):
-        self.current_index = 16
+        self.current_index = len(self.features)
         self.position_open = False
         self.position_side = None
         self.entry_price = None
@@ -129,6 +130,8 @@ class LiveOandaForexEnv:
         self.features = compute_features(self.data)  # Updated call.
         self.scaler.update(self.features)
 
+        # Append the latest live price to form a 16th feature row
+        self.update_live_data()
         initial_features = self.features[self.current_index - 16 : self.current_index]
         initial_features = self.scaler.normalize(initial_features)
         current_pl = 0.0
@@ -137,18 +140,15 @@ class LiveOandaForexEnv:
         return initial_state
     
     def update_live_data(self):
-        try:            
-            new_candle = fetch_candle_data(
-                self.instrument, 
-                self.granularity, 
-                candle_count=1, 
-                access_token=self.access_token, 
-                environment=self.environment
-            )[0]
-            
-            if len(new_candle) != 6:
-                raise ValueError("Invalid candle data returned from OANDA API.")
-            
+        try:
+            price = fetch_current_price(
+                self.account_id,
+                self.instrument,
+                access_token=self.access_token,
+                environment=self.environment,
+            )
+            # Create a pseudo-candle using the live price for all OHLC fields.
+            new_candle = [price, price, price, price, 0.0, 0.0]
             self.data = np.vstack((self.data, new_candle))
             new_features = compute_features(np.vstack((self.data[-2:],)))
             self.features = np.vstack((self.features, new_features))
