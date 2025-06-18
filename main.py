@@ -276,7 +276,7 @@ def trading_loop(train_steps_full=121, entropy_weight=0.01):
                     model.eval()
                     live_env = LiveOandaForexEnv(
                         currency_config,
-                        candle_count=16,
+                        candle_count=TradingConfig.CANDLE_COUNT,
                         granularity=TradingConfig.GRANULARITY
                     )
                     trade_live(model, live_env, num_steps=trade_steps)
