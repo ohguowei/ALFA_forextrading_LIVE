@@ -112,7 +112,9 @@ class SimulatedOandaForexEnv:
             if len(new_candle) != 6:  # Expecting [o, h, l, c, volume, spread]
                 raise ValueError("Invalid candle data returned from OANDA API.")
             self.data = np.vstack((self.data, new_candle))
-            new_features = compute_features(np.vstack((self.data[-2:],)))
+            # Compute features using the last 16 candles to properly
+            # calculate RSI instead of defaulting to a constant value.
+            new_features = compute_features(self.data[-16:])[-1:]
             self.features = np.vstack((self.features, new_features))
             self.scaler.update(new_features)
             self.current_index += 1

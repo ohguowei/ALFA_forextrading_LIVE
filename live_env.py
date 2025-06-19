@@ -149,7 +149,9 @@ class LiveOandaForexEnv:
                 environment=self.environment,
             )[0]
             self.data = np.vstack((self.data, candle))
-            new_features = compute_features(self.data[-2:])
+            # Use the last 16 candles when computing features so RSI is
+            # calculated over a full window rather than just two points.
+            new_features = compute_features(self.data[-16:])[-1:]
             self.features = np.vstack((self.features, new_features))
             self.scaler.update(new_features)
             self.current_index += 1
