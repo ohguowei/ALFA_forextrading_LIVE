@@ -5,10 +5,9 @@ from normalization import RunningStandardScaler
 
 from oanda_api import (
     fetch_candle_data,
-    fetch_current_price,
     open_position,
     close_position,
-    get_open_positions
+    get_open_positions,
 )
 
 from config import TradingConfig  # Import the centralized trading config
@@ -140,17 +139,17 @@ class LiveOandaForexEnv:
         return initial_state
     
     def update_live_data(self):
+        """Append the latest candle data and update feature normalization."""
         try:
-            price = fetch_current_price(
-                self.account_id,
+            candle = fetch_candle_data(
                 self.instrument,
+                self.granularity,
+                candle_count=1,
                 access_token=self.access_token,
                 environment=self.environment,
-            )
-            # Create a pseudo-candle using the live price for all OHLC fields.
-            new_candle = [price, price, price, price, 0.0, 0.0]
-            self.data = np.vstack((self.data, new_candle))
-            new_features = compute_features(np.vstack((self.data[-2:],)))
+            )[0]
+            self.data = np.vstack((self.data, candle))
+            new_features = compute_features(self.data[-2:])
             self.features = np.vstack((self.features, new_features))
             self.scaler.update(new_features)
             self.current_index += 1
