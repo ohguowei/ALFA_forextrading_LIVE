@@ -18,6 +18,8 @@ class ActorCritic(nn.Module):
     ) -> None:
         """Initialize the network."""
         super().__init__()
+        self.decision_history_len = decision_history_len
+        self.num_actions = num_actions
         decision_dim = decision_history_len * num_actions
         # Actor branch with a deeper LSTM (2 layers)
         self.actor_lstm = nn.LSTM(input_size, hidden_size, num_layers=num_lstm_layers, batch_first=True)

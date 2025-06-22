@@ -39,7 +39,8 @@ def evaluate_model(
 
     for _ in range(episodes):
         state = torch.tensor(env.reset(), dtype=torch.float32).unsqueeze(0)
-        decision_history = deque([2] * 16, maxlen=16)
+        hist_len = getattr(model, "decision_history_len", 16)
+        decision_history = deque([2] * hist_len, maxlen=hist_len)
         decisions = encode_decision_history(decision_history)
         episode_reward = 0.0
         steps = 0
@@ -132,7 +133,8 @@ def feature_importance(model: ActorCritic, currency_config, episodes: int = 3):
 
     for _ in range(episodes):
         state = torch.tensor(env.reset(), dtype=torch.float32).unsqueeze(0)
-        decision_history = deque([2] * 16, maxlen=16)
+        hist_len = getattr(model, "decision_history_len", 16)
+        decision_history = deque([2] * hist_len, maxlen=hist_len)
         decisions = encode_decision_history(decision_history)
         done = False
 
