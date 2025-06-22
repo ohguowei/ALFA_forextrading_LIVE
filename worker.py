@@ -71,7 +71,8 @@ def worker(
     
     # Get the initial state and initialize decision history.
     state = env.reset()  # Expected shape: (time_window, features)
-    decision_history = deque([2] * 16, maxlen=16)
+    hist_len = getattr(global_model, "decision_history_len", 16)
+    decision_history = deque([2] * hist_len, maxlen=hist_len)
     decisions_t = encode_decision_history(decision_history)
     state_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
     
@@ -129,7 +130,8 @@ def worker(
             # Update the state and history.
             if done or next_state is None:
                 state = env.reset()
-                decision_history = deque([2] * 16, maxlen=16)
+                hist_len = getattr(global_model, "decision_history_len", 16)
+                decision_history = deque([2] * hist_len, maxlen=hist_len)
                 returns[:] = 0
             else:
                 state = next_state
