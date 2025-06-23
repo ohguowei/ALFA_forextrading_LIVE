@@ -1,12 +1,45 @@
+"""Utility wrappers around the ``oandapyV20`` REST API with retry logic."""
+
+import time
+
 import oandapyV20
 from oandapyV20 import API
+from oandapyV20.exceptions import V20Error
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.orders as orders
 import oandapyV20.endpoints.positions as positions
 import oandapyV20.endpoints.pricing as pricing
 
 def get_client(access_token, environment):
+    """Return a configured ``API`` client."""
+
     return API(access_token=access_token, environment=environment)
+
+
+def _request_with_retry(client, request, delay=5):
+    """Send an API request and retry on temporary failures.
+
+    Parameters
+    ----------
+    client : API
+        Configured OANDA API client.
+    request : BaseV20
+        Endpoint request instance.
+    delay : int, optional
+        Seconds to wait between retries. Defaults to ``5``.
+
+    Returns
+    -------
+    dict
+        Parsed JSON response from the API.
+    """
+
+    while True:
+        try:
+            return client.request(request)
+        except V20Error as exc:  # Network or server issue
+            print(f"OANDA request error: {exc}. Retrying in {delay} seconds...")
+            time.sleep(delay)
 
 # oanda_api.py
 
@@ -20,7 +53,7 @@ def fetch_candle_data(instrument, granularity="H1", candle_count=500, access_tok
         "price": "BA"  # Request Bid and Ask prices.
     }
     r = instruments.InstrumentsCandles(instrument, params=params)
-    response = client.request(r)
+    response = _request_with_retry(client, r)
     if "candles" not in response:
         raise ValueError("Invalid API response: 'candles' field missing.")
     candles = response["candles"]
@@ -73,7 +106,7 @@ def open_position(account_id, instrument, units, side, access_token, environment
     }
     r = orders.OrderCreate(account_id, data=order_data)
     try:
-        response = client.request(r)
+        response = _request_with_retry(client, r)
         print(f"Opened {side} position on {instrument}: {response}")
         return response
     except Exception as e:
@@ -90,7 +123,7 @@ def close_position(account_id, instrument, position_side, access_token, environm
         else:
             raise ValueError("position_side must be 'long' or 'short'")
         r = positions.PositionClose(accountID=account_id, instrument=instrument, data=data)
-        response = client.request(r)
+        response = _request_with_retry(client, r)
         print(f"Position closed for {instrument}: {response}")
         return response
     except Exception as e:
@@ -101,7 +134,7 @@ def get_open_positions(account_id, access_token, environment):
     client = get_client(access_token, environment)
     try:
         r = positions.OpenPositions(accountID=account_id)
-        response = client.request(r)
+        response = _request_with_retry(client, r)
         return response
     except Exception as e:
         print(f"Error retrieving open positions: {e}")
@@ -132,7 +165,7 @@ def fetch_current_price(account_id, instrument, access_token, environment):
     client = get_client(access_token, environment)
     params = {"instruments": instrument}
     r = pricing.PricingInfo(accountID=account_id, params=params)
-    response = client.request(r)
+    response = _request_with_retry(client, r)
     prices = response.get("prices")
     if not prices:
         raise ValueError("No pricing data returned from OANDA API")
