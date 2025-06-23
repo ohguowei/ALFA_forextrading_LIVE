@@ -72,14 +72,9 @@ class LiveOandaForexEnv:
         Check OANDA for any open positions in our 'instrument'.
         If found, set self.position_open, self.position_side, and self.entry_price.
         """
-        positions_response = get_open_positions(
-            self.account_id, self.access_token, self.environment
-        )
+        positions_response = get_open_positions(self.account_id, self.access_token, self.environment)
         if not positions_response or "positions" not in positions_response:
             print("No positions found or error in position check.")
-            self.position_open = False
-            self.position_side = None
-            self.entry_price = None
             return
     
         # positions_response["positions"] is typically a list of dicts
@@ -104,9 +99,6 @@ class LiveOandaForexEnv:
     
         # If no position in that instrument is found
         print(f"No existing position found for {self.instrument} in OANDA.")
-        self.position_open = False
-        self.position_side = None
-        self.entry_price = None
 
 
     # live_env.py
