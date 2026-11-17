@@ -57,7 +57,6 @@ CURRENCY_CONFIGS = {
         access_token=DEFAULT_ACCESS_TOKEN,
         environment=DEFAULT_ENVIRONMENT
      #   account_id="001-003-255162-003",
-     #   access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
      #   environment="live"
      ),
      "AUD_USD": CurrencyConfig(
@@ -70,7 +69,6 @@ CURRENCY_CONFIGS = {
         access_token=DEFAULT_ACCESS_TOKEN,
         environment=DEFAULT_ENVIRONMENT
       #   account_id="001-003-255162-003",
-      #   access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
       #   environment="live"
      ),
      "EUR_AUD": CurrencyConfig(
@@ -83,7 +81,6 @@ CURRENCY_CONFIGS = {
         access_token=DEFAULT_ACCESS_TOKEN,
         environment=DEFAULT_ENVIRONMENT
      #    account_id="001-003-255162-003",
-     #    access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
      #    environment="live"
      ),     
      "GBP_USD": CurrencyConfig(
@@ -96,7 +93,6 @@ CURRENCY_CONFIGS = {
         environment=DEFAULT_ENVIRONMENT
         
     #    #account_id="001-003-255162-002",
-    #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
     #    #environment="live"
      ),
      "GBP_AUD": CurrencyConfig(
@@ -109,7 +105,6 @@ CURRENCY_CONFIGS = {
         environment=DEFAULT_ENVIRONMENT
         
     #    #account_id="001-003-255162-002",
-    #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
     #    #environment="live"
      ),
      "EUR_GBP": CurrencyConfig(
@@ -122,7 +117,6 @@ CURRENCY_CONFIGS = {
         environment=DEFAULT_ENVIRONMENT
         
     #    #account_id="001-003-255162-002",
-    #    #access_token="c33734921cd0b7b68c721fc18e2019c2-8cfd11c75b7df0c81301e2cf58846540",
     #    #environment="live"
      ),    
     # # Add more currencies as needed...
